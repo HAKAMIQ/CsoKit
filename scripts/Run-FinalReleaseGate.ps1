@@ -44,31 +44,62 @@ function Invoke-PowerShellScriptStep {
     }
 }
 
-function Assert-ProjectVersion {
+function Assert-CentralVersionProperties {
     param(
-        [string]$ProjectPath,
-        [string]$ExpectedVersion,
-        [string]$Name
+        [string]$PropsPath,
+        [string]$VersionFilePath,
+        [string]$ExpectedVersion
     )
 
-    if (-not (Test-Path $ProjectPath)) {
-        throw "$Name project file was not found: $ProjectPath"
+    if (-not (Test-Path -LiteralPath $PropsPath -PathType Leaf)) {
+        throw "Directory.Build.props was not found: $PropsPath"
     }
 
-    [xml]$projectXml = Get-Content $ProjectPath
+    if (-not (Test-Path -LiteralPath $VersionFilePath -PathType Leaf)) {
+        throw "VERSION file was not found: $VersionFilePath"
+    }
 
-    $version = $projectXml.Project.PropertyGroup.Version | Select-Object -First 1
-    $packageVersion = $projectXml.Project.PropertyGroup.PackageVersion | Select-Object -First 1
-    $informationalVersion = $projectXml.Project.PropertyGroup.InformationalVersion | Select-Object -First 1
+    [xml]$propsXml = Get-Content -LiteralPath $PropsPath
 
-    foreach ($value in @($version, $packageVersion, $informationalVersion)) {
-        if ([string]::IsNullOrWhiteSpace($value)) {
-            throw "$Name project has an empty version field."
+    $csoKitVersionNode = $propsXml.SelectSingleNode(
+        "/Project/PropertyGroup/CsoKitVersion"
+    )
+
+    if ($null -eq $csoKitVersionNode) {
+        throw "CsoKitVersion was not found in Directory.Build.props."
+    }
+
+    $expectedVersionExpression = '$([System.IO.File]::ReadAllText(''$(MSBuildThisFileDirectory)VERSION'').Trim())'
+    $actualVersionExpression = $csoKitVersionNode.InnerText.Trim()
+
+    if ($actualVersionExpression -ne $expectedVersionExpression) {
+        throw "CsoKitVersion does not read the central VERSION file."
+    }
+
+    foreach ($propertyName in @(
+        "Version",
+        "PackageVersion",
+        "InformationalVersion"
+    )) {
+        $node = $propsXml.SelectSingleNode(
+            "/Project/PropertyGroup/$propertyName"
+        )
+
+        if ($null -eq $node) {
+            throw "$propertyName was not found in Directory.Build.props."
         }
 
-        if ($value -ne $ExpectedVersion) {
-            throw "$Name project version mismatch. Expected $ExpectedVersion, found $value."
+        if ($node.InnerText.Trim() -ne '$(CsoKitVersion)') {
+            throw "$propertyName does not reference CsoKitVersion."
         }
+    }
+
+    $actualVersion = (
+        Get-Content -LiteralPath $VersionFilePath -Raw
+    ).Trim()
+
+    if ($actualVersion -ne $ExpectedVersion) {
+        throw "Central version mismatch. Expected $ExpectedVersion, found $actualVersion."
     }
 }
 
@@ -174,9 +205,7 @@ $PublishedSmokeScript = Join-Path $PSScriptRoot "Run-PublishedExeSmoke.ps1"
 $PublishReleaseScript = Join-Path $PSScriptRoot "Publish-Release.ps1"
 $VerifyReleaseScript = Join-Path $PSScriptRoot "Verify-Release.ps1"
 $PublishSourceScript = Join-Path $PSScriptRoot "Publish-SourcePackage.ps1"
-$CliProject = Join-Path $RepoRoot "src\CsoKit.Cli\CsoKit.Cli.csproj"
-$CoreProject = Join-Path $RepoRoot "src\CsoKit.Core\CsoKit.Core.csproj"
-$AppProject = Join-Path $RepoRoot "src\CsoKit.App\CsoKit.App.csproj"
+$DirectoryBuildProps = Join-Path $RepoRoot "Directory.Build.props"
 $PublishDir = Join-Path (Join-Path $RepoRoot "artifacts\publish") $Runtime
 $ReleaseZip = Join-Path (Join-Path $RepoRoot "artifacts\release") "csokit-$Version-$Runtime.zip"
 $SourceZip = Join-Path (Join-Path $RepoRoot "artifacts\source") "csokit-$Version-source.zip"
@@ -209,9 +238,10 @@ if (-not $AllowDirty) {
 }
 
 Assert-NoTrackedArtifacts -RepoRoot $RepoRoot
-Assert-ProjectVersion -ProjectPath $CliProject -ExpectedVersion $Version -Name "CLI"
-Assert-ProjectVersion -ProjectPath $CoreProject -ExpectedVersion $Version -Name "Core"
-Assert-ProjectVersion -ProjectPath $AppProject -ExpectedVersion $Version -Name "App"
+Assert-CentralVersionProperties `
+    -PropsPath $DirectoryBuildProps `
+    -VersionFilePath $versionFile `
+    -ExpectedVersion $Version
 
 if (-not $SkipRealIsoGates) {
     if ([string]::IsNullOrWhiteSpace($InputIso)) {

@@ -69,27 +69,62 @@ function Get-RelativePathCompat {
     return $relativePath.Replace('\', '/')
 }
 
-function Assert-ProjectVersion {
+function Assert-CentralVersionProperties {
     param(
-        [string]$ProjectPath,
-        [string]$ExpectedVersion,
-        [string]$Name
+        [string]$PropsPath,
+        [string]$VersionFilePath,
+        [string]$ExpectedVersion
     )
 
-    if (-not (Test-Path -LiteralPath $ProjectPath)) {
-        throw "$Name project file was not found: $ProjectPath"
+    if (-not (Test-Path -LiteralPath $PropsPath -PathType Leaf)) {
+        throw "Directory.Build.props was not found: $PropsPath"
     }
 
-    [xml]$projectXml = Get-Content -LiteralPath $ProjectPath
-    $propertyGroups = @($projectXml.Project.PropertyGroup)
-    $version = ($propertyGroups | ForEach-Object { $_.Version } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -First 1)
-    $packageVersion = ($propertyGroups | ForEach-Object { $_.PackageVersion } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -First 1)
-    $informationalVersion = ($propertyGroups | ForEach-Object { $_.InformationalVersion } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -First 1)
+    if (-not (Test-Path -LiteralPath $VersionFilePath -PathType Leaf)) {
+        throw "VERSION file was not found: $VersionFilePath"
+    }
 
-    foreach ($field in @(@("Version", $version), @("PackageVersion", $packageVersion), @("InformationalVersion", $informationalVersion))) {
-        if ($field[1] -ne $ExpectedVersion) {
-            throw "$Name $($field[0]) mismatch. Expected $ExpectedVersion, found $($field[1])."
+    [xml]$propsXml = Get-Content -LiteralPath $PropsPath
+
+    $csoKitVersionNode = $propsXml.SelectSingleNode(
+        "/Project/PropertyGroup/CsoKitVersion"
+    )
+
+    if ($null -eq $csoKitVersionNode) {
+        throw "CsoKitVersion was not found in Directory.Build.props."
+    }
+
+    $expectedVersionExpression = '$([System.IO.File]::ReadAllText(''$(MSBuildThisFileDirectory)VERSION'').Trim())'
+    $actualVersionExpression = $csoKitVersionNode.InnerText.Trim()
+
+    if ($actualVersionExpression -ne $expectedVersionExpression) {
+        throw "CsoKitVersion does not read the central VERSION file."
+    }
+
+    foreach ($propertyName in @(
+        "Version",
+        "PackageVersion",
+        "InformationalVersion"
+    )) {
+        $node = $propsXml.SelectSingleNode(
+            "/Project/PropertyGroup/$propertyName"
+        )
+
+        if ($null -eq $node) {
+            throw "$propertyName was not found in Directory.Build.props."
         }
+
+        if ($node.InnerText.Trim() -ne '$(CsoKitVersion)') {
+            throw "$propertyName does not reference CsoKitVersion."
+        }
+    }
+
+    $actualVersion = (
+        Get-Content -LiteralPath $VersionFilePath -Raw
+    ).Trim()
+
+    if ($actualVersion -ne $ExpectedVersion) {
+        throw "Central version mismatch. Expected $ExpectedVersion, found $actualVersion."
     }
 }
 
@@ -97,30 +132,107 @@ function Assert-NativeVersion {
     param(
         [string]$NativeSourcePath,
         [string]$CMakePath,
+        [string]$HeaderTemplatePath,
+        [string]$VersionFilePath,
         [string]$ExpectedVersion
     )
 
-    $parts = $ExpectedVersion.Split('-')[0].Split('.')
+    foreach ($requiredPath in @(
+        $NativeSourcePath,
+        $CMakePath,
+        $HeaderTemplatePath,
+        $VersionFilePath
+    )) {
+        if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
+            throw "Native version input was not found: $requiredPath"
+        }
+    }
 
-    if ($parts.Count -ne 3) {
-        throw "Expected a semantic version with three numeric components: $ExpectedVersion"
+    if ($ExpectedVersion -notmatch '^[0-9]+[.][0-9]+[.][0-9]+$') {
+        throw "Expected a stable semantic version: $ExpectedVersion"
+    }
+
+    $actualVersion = (
+        Get-Content -LiteralPath $VersionFilePath -Raw
+    ).Trim()
+
+    if ($actualVersion -ne $ExpectedVersion) {
+        throw "Native VERSION mismatch. Expected $ExpectedVersion, found $actualVersion."
     }
 
     $sourceText = Get-Content -LiteralPath $NativeSourcePath -Raw
     $cmakeText = Get-Content -LiteralPath $CMakePath -Raw
+    $templateText = Get-Content -LiteralPath $HeaderTemplatePath -Raw
 
-    if ($cmakeText -notmatch [regex]::Escape("VERSION $($parts[0]).$($parts[1]).$($parts[2])")) {
-        throw "Native CMake version does not match $ExpectedVersion."
+    foreach ($requiredPattern in @(
+        'file\s*\(\s*READ\s+"\$\{CMAKE_CURRENT_SOURCE_DIR\}/[.][.]/[.][.]/VERSION"\s+CSOKIT_VERSION\s*\)',
+        'string\s*\(\s*STRIP\s+"\$\{CSOKIT_VERSION\}"\s+CSOKIT_VERSION\s*\)',
+        'project\s*\(\s*CsoKit[.]Native\s+VERSION\s+\$\{CSOKIT_VERSION\}\s+LANGUAGES\s+C\s+CXX\s*\)'
+    )) {
+        if ($cmakeText -notmatch $requiredPattern) {
+            throw "Native CMake version wiring is invalid: $requiredPattern"
+        }
     }
 
-    foreach ($pair in @(
-        @("major", $parts[0]),
-        @("minor", $parts[1]),
-        @("patch", $parts[2])
+    foreach ($requiredPattern in @(
+        '#define\s+CSOKIT_VERSION_MAJOR\s+@PROJECT_VERSION_MAJOR@u',
+        '#define\s+CSOKIT_VERSION_MINOR\s+@PROJECT_VERSION_MINOR@u',
+        '#define\s+CSOKIT_VERSION_PATCH\s+@PROJECT_VERSION_PATCH@u'
     )) {
-        if ($sourceText -notmatch "version->$($pair[0])\s*=\s*$($pair[1]);") {
-            throw "Native source version->$($pair[0]) does not match $ExpectedVersion."
+        if ($templateText -notmatch $requiredPattern) {
+            throw "Native version template is invalid: $requiredPattern"
         }
+    }
+
+    foreach ($requiredPattern in @(
+        'version->major\s*=\s*CSOKIT_VERSION_MAJOR\s*;',
+        'version->minor\s*=\s*CSOKIT_VERSION_MINOR\s*;',
+        'version->patch\s*=\s*CSOKIT_VERSION_PATCH\s*;'
+    )) {
+        if ($sourceText -notmatch $requiredPattern) {
+            throw "Native source version wiring is invalid: $requiredPattern"
+        }
+    }
+}
+
+function Copy-NativeRuntime {
+    param(
+        [string]$SourcePath,
+        [string]$DestinationPath,
+        [string]$Context
+    )
+
+    if (-not (Test-Path -LiteralPath $SourcePath -PathType Leaf)) {
+        throw "Native DLL was not found for $Context`: $SourcePath"
+    }
+
+    $destinationDirectory = Split-Path -Parent $DestinationPath
+
+    New-Item `
+        -ItemType Directory `
+        -Force `
+        -Path $destinationDirectory |
+        Out-Null
+
+    Copy-Item `
+        -LiteralPath $SourcePath `
+        -Destination $DestinationPath `
+        -Force
+
+    if (-not (Test-Path -LiteralPath $DestinationPath -PathType Leaf)) {
+        throw "Native DLL was not staged for $Context`: $DestinationPath"
+    }
+
+    $sourceHash = (
+        Get-FileHash -LiteralPath $SourcePath -Algorithm SHA256
+    ).Hash
+
+    $destinationHash = (
+        Get-FileHash -LiteralPath $DestinationPath -Algorithm SHA256
+    ).Hash
+
+    if ($sourceHash -ne $destinationHash) {
+        throw "Native DLL hash mismatch for $Context."
     }
 }
 
@@ -309,11 +421,16 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
     throw "VERSION is empty."
 }
 $SolutionPath = Join-Path $RepoRoot "CsoKit.slnx"
+$DirectoryBuildProps = Join-Path $RepoRoot "Directory.Build.props"
 $CoreProject = Join-Path $RepoRoot "src\CsoKit.Core\CsoKit.Core.csproj"
 $CliProject = Join-Path $RepoRoot "src\CsoKit.Cli\CsoKit.Cli.csproj"
 $AppProject = Join-Path $RepoRoot "src\CsoKit.App\CsoKit.App.csproj"
 $NativeSource = Join-Path $RepoRoot "native\CsoKit.Native\src\csokit_native.cpp"
 $NativeCMake = Join-Path $RepoRoot "native\CsoKit.Native\CMakeLists.txt"
+$NativeVersionTemplate = Join-Path $RepoRoot "native\CsoKit.Native\include\csokit_version.h.in"
+$NativeBuildScript = Join-Path $RepoRoot "scripts\Build-Native.ps1"
+$NativeDllPath = Join-Path $RepoRoot "artifacts\native-build\win-x64\Release\CsoKit.Native.dll"
+$TestNativeDllPath = Join-Path $RepoRoot "tests\CsoKit.Tests\bin\Release\net10.0\CsoKit.Native.dll"
 $ArtifactsDir = Join-Path $RepoRoot "artifacts"
 $PublishRoot = Join-Path $ArtifactsDir "publish"
 $ReleaseRoot = Join-Path $ArtifactsDir "release"
@@ -331,10 +448,17 @@ Write-Host "NuGetAudit: $(if ($SkipNuGetAudit) { 'disabled by request' } else { 
 Write-Host "Real ISO:   $(if (Test-ShouldRunRealIsoGate) { $InputIso } else { 'not provided; optional real-corpus smoke skipped' })"
 Write-Host ""
 
-Assert-ProjectVersion -ProjectPath $CoreProject -ExpectedVersion $Version -Name "Core"
-Assert-ProjectVersion -ProjectPath $CliProject -ExpectedVersion $Version -Name "CLI"
-Assert-ProjectVersion -ProjectPath $AppProject -ExpectedVersion $Version -Name "App"
-Assert-NativeVersion -NativeSourcePath $NativeSource -CMakePath $NativeCMake -ExpectedVersion $Version
+Assert-CentralVersionProperties `
+    -PropsPath $DirectoryBuildProps `
+    -VersionFilePath $versionFile `
+    -ExpectedVersion $Version
+
+Assert-NativeVersion `
+    -NativeSourcePath $NativeSource `
+    -CMakePath $NativeCMake `
+    -HeaderTemplatePath $NativeVersionTemplate `
+    -VersionFilePath $versionFile `
+    -ExpectedVersion $Version
 
 if (-not $AllowDirty) {
     Assert-GitClean -RepoRoot $RepoRoot
@@ -358,8 +482,27 @@ Invoke-Step "dotnet restore" {
     Invoke-DotNet -StepName "dotnet restore" -Arguments (@("restore", $SolutionPath) + $restoreAuditArgs)
 }
 
+Invoke-Step "build native backend" {
+    & $NativeBuildScript -Configuration Release -Platform x64
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Native backend build failed with exit code $LASTEXITCODE."
+    }
+
+    if (-not (Test-Path -LiteralPath $NativeDllPath -PathType Leaf)) {
+        throw "Native DLL was not produced: $NativeDllPath"
+    }
+}
+
 Invoke-Step "dotnet build Release" {
     Invoke-DotNet -StepName "dotnet build Release" -Arguments (@("build", $SolutionPath, "-c", "Release", "--no-restore") + $restoreAuditArgs)
+}
+
+Invoke-Step "stage native backend for tests" {
+    Copy-NativeRuntime `
+        -SourcePath $NativeDllPath `
+        -DestinationPath $TestNativeDllPath `
+        -Context "official release tests"
 }
 
 Invoke-Step "dotnet test Release" {
@@ -376,6 +519,11 @@ Invoke-Step "publish CLI" {
         "-o", $CliPublishDir
     ) + $restoreAuditArgs)
 
+    Copy-NativeRuntime `
+        -SourcePath $NativeDllPath `
+        -DestinationPath (Join-Path $CliPublishDir "CsoKit.Native.dll") `
+        -Context "CLI publish"
+
     Copy-ReleaseDocuments -Destination $CliPublishDir
     New-Sha256Manifest -Directory $CliPublishDir
     Test-BlockedArtifacts -RootPath $CliPublishDir -Context "CLI publish"
@@ -390,6 +538,11 @@ Invoke-Step "publish App" {
         "--no-restore",
         "-o", $AppPublishDir
     ) + $restoreAuditArgs)
+
+    Copy-NativeRuntime `
+        -SourcePath $NativeDllPath `
+        -DestinationPath (Join-Path $AppPublishDir "CsoKit.Native.dll") `
+        -Context "App publish"
 
     Copy-ReleaseDocuments -Destination $AppPublishDir
     New-Sha256Manifest -Directory $AppPublishDir

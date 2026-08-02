@@ -132,7 +132,7 @@ function Test-HelpSmoke {
 
     foreach ($required in @(
         "csokit info <input.cso>",
-        "csokit verify <input.cso>",
+        "csokit verify <input.cso|input.zso|input.dax>",
         "csokit repair <input.iso|input.cso>",
         "csokit analyze <input.iso>",
         "csokit detect <input>",
@@ -201,12 +201,55 @@ function Invoke-ScriptFile {
     }
 }
 
+function Copy-NativeRuntime {
+    param(
+        [string]$SourcePath,
+        [string]$DestinationPath,
+        [string]$Context
+    )
+
+    if (-not (Test-Path -LiteralPath $SourcePath -PathType Leaf)) {
+        throw "Native DLL was not found for $Context`: $SourcePath"
+    }
+
+    $destinationDirectory = Split-Path -Parent $DestinationPath
+
+    New-Item `
+        -ItemType Directory `
+        -Force `
+        -Path $destinationDirectory |
+        Out-Null
+
+    Copy-Item `
+        -LiteralPath $SourcePath `
+        -Destination $DestinationPath `
+        -Force
+
+    if (-not (Test-Path -LiteralPath $DestinationPath -PathType Leaf)) {
+        throw "Native DLL was not staged for $Context`: $DestinationPath"
+    }
+
+    $sourceHash = (
+        Get-FileHash -LiteralPath $SourcePath -Algorithm SHA256
+    ).Hash
+
+    $destinationHash = (
+        Get-FileHash -LiteralPath $DestinationPath -Algorithm SHA256
+    ).Hash
+
+    if ($sourceHash -ne $destinationHash) {
+        throw "Native DLL hash mismatch for $Context."
+    }
+}
+
 $RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
 $SolutionPath = Join-Path $RepoRoot "CsoKit.slnx"
 $CliProject = Join-Path $RepoRoot "src\CsoKit.Cli\CsoKit.Cli.csproj"
 $RoundtripGateScript = Join-Path $RepoRoot "scripts\Run-RoundtripGate.ps1"
 $ProfileMatrixScript = Join-Path $RepoRoot "scripts\Run-ProfileRoundtripMatrix.ps1"
 $NativeBuildScript = Join-Path $RepoRoot "scripts\Build-Native.ps1"
+$NativeDllPath = Join-Path $RepoRoot "artifacts\native-build\win-x64\Release\CsoKit.Native.dll"
+$NativeTestDllPath = Join-Path $RepoRoot "tests\CsoKit.Tests\bin\$Configuration\net10.0\CsoKit.Native.dll"
 
 if (-not (Test-Path -LiteralPath $SolutionPath)) {
     throw "Solution file was not found: $SolutionPath"
@@ -252,6 +295,13 @@ Invoke-GateStep -Name "dotnet build" -Action {
         "--no-restore",
         "-p:NuGetAudit=false"
     )
+}
+
+Invoke-GateStep -Name "stage native backend for tests" -Action {
+    Copy-NativeRuntime `
+        -SourcePath $NativeDllPath `
+        -DestinationPath $NativeTestDllPath `
+        -Context "$Configuration tests"
 }
 
 Invoke-GateStep -Name "dotnet test" -Action {
