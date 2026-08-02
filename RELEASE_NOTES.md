@@ -18,7 +18,8 @@ CsoKit 0.6.1 is a security, reliability, and release-quality update for Windows 
 
 ## Supported workflows
 
-- Detect and inspect ISO, CSO, ZSO, DAX, and supported CSO2 input.
+- Detect ISO, CSO, ZSO, DAX, and supported CSO2 input.
+- Inspect CSO1 and supported CSO2 input.
 - Analyze PSP ISO structure.
 - Verify compressed containers, including deep block verification and SHA-256.
 - Compress ISO into CSO1.
