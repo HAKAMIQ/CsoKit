@@ -65,7 +65,7 @@ function Resolve-BenchmarkProfiles {
 function Get-DefaultOutputDirectory {
     if (-not [string]::IsNullOrWhiteSpace($Root)) {
         $resolvedRoot = (Resolve-Path -LiteralPath $Root -ErrorAction Stop).ProviderPath
-        return Join-Path $resolvedRoot "HakamiqCsoKit_BenchmarkTruth"
+        return Join-Path $resolvedRoot "CsoKit_BenchmarkTruth"
     }
 
     foreach ($path in @($InputPath)) {
@@ -77,13 +77,13 @@ function Get-DefaultOutputDirectory {
         $item = Get-Item -LiteralPath $resolvedPath -ErrorAction Stop
 
         if ($item.PSIsContainer) {
-            return Join-Path $item.FullName "HakamiqCsoKit_BenchmarkTruth"
+            return Join-Path $item.FullName "CsoKit_BenchmarkTruth"
         }
 
-        return Join-Path $item.Directory.FullName "HakamiqCsoKit_BenchmarkTruth"
+        return Join-Path $item.Directory.FullName "CsoKit_BenchmarkTruth"
     }
 
-    return Join-Path ([System.IO.Path]::GetTempPath()) ("HakamiqCsoKit_BenchmarkTruth_" + [Guid]::NewGuid().ToString("N"))
+    return Join-Path ([System.IO.Path]::GetTempPath()) ("CsoKit_BenchmarkTruth_" + [Guid]::NewGuid().ToString("N"))
 }
 
 function Write-Utf8NoBom {
@@ -253,9 +253,9 @@ function Get-ResolvedInputFiles {
 
 function Initialize-CsoTool {
     $script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).ProviderPath
-    $solution = Join-Path $script:RepoRoot "Hakamiq.CsoKit.slnx"
-    $exe = Join-Path $script:RepoRoot "src/Hakamiq.Cso.Cli/bin/$Configuration/net10.0/hakamiq-cso.exe"
-    $dll = Join-Path $script:RepoRoot "src/Hakamiq.Cso.Cli/bin/$Configuration/net10.0/Hakamiq.Cso.Cli.dll"
+    $solution = Join-Path $script:RepoRoot "CsoKit.slnx"
+    $exe = Join-Path $script:RepoRoot "src/CsoKit.Cli/bin/$Configuration/net10.0/csokit.exe"
+    $dll = Join-Path $script:RepoRoot "src/CsoKit.Cli/bin/$Configuration/net10.0/CsoKit.Cli.dll"
 
     if (-not (Test-Path -LiteralPath $exe -PathType Leaf) -and
         -not (Test-Path -LiteralPath $dll -PathType Leaf)) {
@@ -356,7 +356,7 @@ function Invoke-JsonTool {
         }
         catch {
             if ($process.ExitCode -eq 0) {
-                throw "hakamiq-cso did not return valid JSON for: $($Arguments -join ' ')"
+                throw "csokit did not return valid JSON for: $($Arguments -join ' ')"
             }
         }
     }
@@ -381,7 +381,7 @@ function Invoke-JsonTool {
     }
 
     if ($null -eq $json) {
-        throw "hakamiq-cso did not return valid JSON for: $($Arguments -join ' ')"
+        throw "csokit did not return valid JSON for: $($Arguments -join ' ')"
     }
 
     return [pscustomobject]@{
@@ -430,7 +430,7 @@ function Get-ReportMarkdown {
     param([object]$Report)
 
     $builder = [System.Text.StringBuilder]::new()
-    [void]$builder.AppendLine("# Hakamiq.CsoKit Benchmark Truth Report")
+    [void]$builder.AppendLine("# CsoKit Benchmark Truth Report")
     [void]$builder.AppendLine()
     [void]$builder.AppendLine("- Generated UTC: $($Report.generatedAtUtc)")
     [void]$builder.AppendLine("- Repo: $($Report.repo)")
@@ -497,7 +497,7 @@ $artifactRoot = if ($KeepArtifacts) {
     Join-Path $OutputDirectory "artifacts"
 }
 else {
-    Join-Path ([System.IO.Path]::GetTempPath()) ("HakamiqCsoKit_BenchmarkArtifacts_" + [Guid]::NewGuid().ToString("N"))
+    Join-Path ([System.IO.Path]::GetTempPath()) ("CsoKit_BenchmarkArtifacts_" + [Guid]::NewGuid().ToString("N"))
 }
 
 New-Item -ItemType Directory -Path $artifactRoot -Force | Out-Null

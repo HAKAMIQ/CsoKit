@@ -40,8 +40,8 @@ if (-not (Test-Path -LiteralPath $resolvedRoot -PathType Container)) {
 }
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$exe = Join-Path $repoRoot "src/Hakamiq.Cso.Cli/bin/$Configuration/net10.0/hakamiq-cso.exe"
-$dll = Join-Path $repoRoot "src/Hakamiq.Cso.Cli/bin/$Configuration/net10.0/Hakamiq.Cso.Cli.dll"
+$exe = Join-Path $repoRoot "src/CsoKit.Cli/bin/$Configuration/net10.0/csokit.exe"
+$dll = Join-Path $repoRoot "src/CsoKit.Cli/bin/$Configuration/net10.0/CsoKit.Cli.dll"
 
 if (Test-Path -LiteralPath $exe -PathType Leaf) {
     $tool = @($exe)
@@ -51,7 +51,7 @@ elseif (Test-Path -LiteralPath $dll -PathType Leaf) {
 }
 else {
     Write-Host "CLI binary was not found. Building $Configuration first..."
-    & dotnet build (Join-Path $repoRoot 'Hakamiq.CsoKit.slnx') -c $Configuration
+    & dotnet build (Join-Path $repoRoot 'CsoKit.slnx') -c $Configuration
     if (Test-Path -LiteralPath $exe -PathType Leaf) {
         $tool = @($exe)
     }
@@ -60,7 +60,7 @@ else {
     }
 }
 
-$artifactRoot = Join-Path ([IO.Path]::GetTempPath()) ("HakamiqCsoKit_RealCorpus_" + [Guid]::NewGuid().ToString('N'))
+$artifactRoot = Join-Path ([IO.Path]::GetTempPath()) ("CsoKit_RealCorpus_" + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $artifactRoot | Out-Null
 
 $extensions = @('.iso', '.cso', '.zso', '.dax', '.cso2')
@@ -76,7 +76,7 @@ function Invoke-CsoTool {
     $prefix = if ($tool.Count -gt 1) { @($tool[1..($tool.Count - 1)]) } else { @() }
     & $tool[0] @($prefix + $Arguments)
     if ($LASTEXITCODE -ne 0) {
-        throw "hakamiq-cso failed with exit code $LASTEXITCODE: $($Arguments -join ' ')"
+        throw "csokit failed with exit code $LASTEXITCODE: $($Arguments -join ' ')"
     }
 }
 

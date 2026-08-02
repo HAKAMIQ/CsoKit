@@ -16,7 +16,7 @@ Measured real-ISO evidence did not prove that native participation made compress
 
 - Native DLL build and final publish inclusion.
 - `native-info` runtime reporting.
-- Managed fallback via `HAKAMIQ_CSO_DISABLE_NATIVE` for diagnostics and benchmarks.
+- Managed fallback via `CSOKIT_DISABLE_NATIVE` for diagnostics and benchmarks.
 - Final release gate verification that the release package loads the native backend.
 - Benchmark support for comparing native-runtime and managed-runtime modes.
 

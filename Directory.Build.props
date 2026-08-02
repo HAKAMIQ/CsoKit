@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <CsoKitVersion>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)VERSION').Trim())</CsoKitVersion>
+    <Version>$(CsoKitVersion)</Version>
+    <PackageVersion>$(CsoKitVersion)</PackageVersion>
+    <InformationalVersion>$(CsoKitVersion)</InformationalVersion>
+  </PropertyGroup>
+</Project>

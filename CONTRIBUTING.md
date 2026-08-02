@@ -79,3 +79,11 @@ If you have a real PSP ISO available, add the optional corpus smoke:
 For a future release, replace `0.6.0` with the version you are publishing.
 
 If NuGet vulnerability metadata times out with `NU1900`, retry later. If you must validate while the audit feed is unavailable, use `-SkipNuGetAudit` and mention that in the release notes or gate summary.
+## Native development search
+
+Normal releases load `CsoKit.Native.dll` only beside the application executable. Local
+repository artifact probing is disabled by default. Developers may opt in with
+`CSOKIT_NATIVE_DEV_SEARCH=1`; set `CSOKIT_NATIVE_SHA256` when testing a specific build.
+
+The release version comes from the root `VERSION` file. Update that file once; managed
+project metadata, CMake native constants, and release scripts consume it.

@@ -1,4 +1,4 @@
-# Hakamiq CsoKit 0.6.0 Official Release Gate
+# CsoKit 0.6.0 Official Release Gate
 
 This gate validates the release candidate before publishing GitHub assets.
 

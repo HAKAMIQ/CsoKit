@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = "0.6.0"
+    [string]$Version = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -42,27 +42,40 @@ function Assert-RequiredSourceFile {
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$versionFile = Join-Path $repoRoot "VERSION"
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    $Version = (Get-Content -LiteralPath $versionFile -Raw).Trim()
+}
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    throw "VERSION is empty."
+}
 $artifactsDir = Join-Path $repoRoot "artifacts"
 $sourceDir = Join-Path $artifactsDir "source"
-$zipPath = Join-Path $sourceDir "hakamiq-csokit-$Version-source.zip"
+$zipPath = Join-Path $sourceDir "csokit-$Version-source.zip"
 $stagingDir = Join-Path $sourceDir "staging"
 
 $blockedTopLevel = @(".git", ".vs", "bin", "obj", "artifacts", "TestResults")
 $blockedNested = @("bin", "obj", "TestResults")
 
 $requiredSourceFiles = @(
-    "Hakamiq.CsoKit.slnx",
-    "src\Hakamiq.Cso.Core\Hakamiq.Cso.Core.csproj",
-    "src\Hakamiq.Cso.Cli\Hakamiq.Cso.Cli.csproj",
-    "src\Hakamiq.Cso.App\Hakamiq.Cso.App.csproj",
-    "tests\Hakamiq.Cso.Tests\Hakamiq.Cso.Tests.csproj",
-    "native\Hakamiq.Cso.Native\CMakeLists.txt",
-    "native\Hakamiq.Cso.Native\src\hakamiq_cso_native.cpp",
-    "native\Hakamiq.Cso.Native\include\hakamiq_cso_native.h",
+    "VERSION",
+    "Directory.Build.props",
+    "CsoKit.slnx",
+    "src\CsoKit.Core\CsoKit.Core.csproj",
+    "src\CsoKit.Application\CsoKit.Application.csproj",
+    "src\CsoKit.Cli\CsoKit.Cli.csproj",
+    "src\CsoKit.App\CsoKit.App.csproj",
+    "tests\CsoKit.Tests\CsoKit.Tests.csproj",
+    "tests\CsoKit.App.Tests\CsoKit.App.Tests.csproj",
+    "scripts\Verify-Hardening.ps1",
+    "native\CsoKit.Native\CMakeLists.txt",
+    "native\CsoKit.Native\src\csokit_native.cpp",
+    "native\CsoKit.Native\include\csokit_native.h",
+    "native\CsoKit.Native\include\csokit_version.h.in",
     "native\third_party\zopfli\src\zopfli\zopfli_lib.c"
 )
 
-Write-Host "Hakamiq CsoKit Source Package Publisher"
+Write-Host "CsoKit Source Package Publisher"
 Write-Host "Version: $Version"
 Write-Host "Repo:    $repoRoot"
 Write-Host ""
@@ -83,6 +96,10 @@ $items = Get-ChildItem $repoRoot -Force -Recurse -File | Where-Object {
     }
 
     if ($blockedTopLevel -contains $parts[0]) {
+        return $false
+    }
+
+    if ($parts.Count -eq 1 -and [System.IO.Path]::GetExtension($parts[0]) -eq ".zip") {
         return $false
     }
 
@@ -110,10 +127,22 @@ foreach ($relative in $relativeItems) {
     Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Force
 }
 
-$manifestPath = Join-Path $stagingDir "SOURCE_FILES.txt"
+$sourceListPath = Join-Path $stagingDir "SOURCE_FILES.txt"
 $relativeItems |
     ForEach-Object { $_.Replace([System.IO.Path]::DirectorySeparatorChar, '/') } |
-    Set-Content -LiteralPath $manifestPath -Encoding UTF8
+    Set-Content -LiteralPath $sourceListPath -Encoding UTF8
+
+$hashManifestPath = Join-Path $stagingDir "SOURCE-MANIFEST.sha256"
+Get-ChildItem -LiteralPath $stagingDir -File -Recurse |
+    Where-Object { $_.FullName -ne $hashManifestPath } |
+    Sort-Object FullName |
+    ForEach-Object {
+        $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+        $relative = Get-RelativePathCompat -BasePath $stagingDir -FullPath $_.FullName
+        $normalized = $relative.Replace([System.IO.Path]::DirectorySeparatorChar, '/')
+        "$hash  $normalized"
+    } |
+    Set-Content -LiteralPath $hashManifestPath -Encoding UTF8
 
 if (Test-Path -LiteralPath $zipPath) {
     Remove-Item -LiteralPath $zipPath -Force

@@ -82,7 +82,7 @@ jobs:
       - name: Attest release ZIP
         uses: actions/attest@v4
         with:
-          subject-path: artifacts/release/hakamiq-csokit-${{ env.RELEASE_VERSION }}-win-x64.zip
+          subject-path: artifacts/release/csokit-${{ env.RELEASE_VERSION }}-win-x64.zip
 
       - name: Attest SHA256 manifest
         uses: actions/attest@v4
@@ -92,7 +92,7 @@ jobs:
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v7
         with:
-          name: hakamiq-csokit-${{ env.RELEASE_VERSION }}-win-x64
+          name: csokit-${{ env.RELEASE_VERSION }}-win-x64
           path: |
             artifacts/release/*.zip
             artifacts/publish/win-x64/SHA256SUMS.txt
@@ -102,7 +102,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $zipPath = "artifacts\release\hakamiq-csokit-$env:RELEASE_VERSION-win-x64.zip"
+          $zipPath = "artifacts\release\csokit-$env:RELEASE_VERSION-win-x64.zip"
           $shaPath = "artifacts\publish\win-x64\SHA256SUMS.txt"
 
           if (-not (Test-Path $zipPath)) {
@@ -120,7 +120,7 @@ jobs:
             $zipPath,
             $shaPath,
             "--title",
-            "Hakamiq CsoKit $env:RELEASE_VERSION",
+            "CsoKit $env:RELEASE_VERSION",
             "--notes-file",
             "RELEASE_NOTES.md"
           )

@@ -1,4 +1,4 @@
-# Hakamiq.CsoKit Historical Scorecard
+# CsoKit Historical Scorecard
 
 This historical file is superseded by `docs/RELEASE_SCORECARD.md` for the current R3-C release-hardening state.
 

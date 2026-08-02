@@ -1,10 +1,10 @@
-# Hakamiq CsoKit stability fix notes
+# CsoKit stability fix notes
 
 ## Release-readiness hardening
 
 - Add final publish native backend verification to the final release gate.
 - Make release workflow tag-only to preserve signed-tag release policy.
-- Add independent Hakamiq compression benchmark coverage.
+- Add independent CsoKit compression benchmark coverage.
 - Add 0.5.0 release scorecard with explicit blockers and required evidence.
 
 ## P2-I stable release promotion
@@ -27,7 +27,7 @@
 
 ## P2-F published EXE smoke
 
-- Add `scripts/Run-PublishedExeSmoke.ps1` to publish and test the actual `hakamiq-cso.exe` output.
+- Add `scripts/Run-PublishedExeSmoke.ps1` to publish and test the actual `csokit.exe` output.
 - Smoke-test help, version, native-info, JSON argument output, measure output, verify, compress, and decompress through the published executable.
 - Run real ISO -> CSO -> ISO SHA256 checks for `smallest`, `compat`, and `fast` using the published executable.
 - Keep generated smoke artifacts under `artifacts/published-exe-smoke-work` only when `-KeepArtifacts` is supplied.
@@ -93,16 +93,16 @@ This source package applies the stability fixes requested after the CSO readines
 ## P1-D output path policy
 
 - Add same-folder default output naming for end-user conversion commands.
-- Allow `hakamiq-cso compress <input.iso>` to write `<input>.cso` beside the source file.
-- Allow `hakamiq-cso decompress <input.cso>` to write `<input>.iso` beside the source file.
+- Allow `csokit compress <input.iso>` to write `<input>.cso` beside the source file.
+- Allow `csokit decompress <input.cso>` to write `<input>.iso` beside the source file.
 - Avoid automatic output-folder creation. Explicit `-o` paths must point to an existing folder.
-- Avoid overwriting existing files when output is auto-named. Existing targets receive ` - Hakamiq Converted`, then numbered suffixes.
+- Avoid overwriting existing files when output is auto-named. Existing targets receive ` - CsoKit Converted`, then numbered suffixes.
 - Keep `--measure` write-free and output-path-free.
 
 ## P1-C measure layer
 
 - Add `CsoMeasureEstimator`, `CsoMeasureOptions`, and `CsoMeasureResult` for estimating CSO output size without writing a CSO file.
-- Add `hakamiq-cso compress <input.iso> --measure` for measure-only CLI usage.
+- Add `csokit compress <input.iso> --measure` for measure-only CLI usage.
 - Report original size, estimated CSO size, estimated ratio, saved/growth bytes, total blocks, compressed blocks, stored blocks, profile, fast mode, and level.
 - Reuse the same sector compression worker and stored-versus-compressed selector used by the writer path so estimates track current compression behavior.
 - Add focused tests to compare measure results with actual compression output.
@@ -148,9 +148,9 @@ This source package applies the stability fixes requested after the CSO readines
 The editing environment used to prepare this package does not include the .NET SDK, so `dotnet build` / `dotnet test` could not be executed here. Run the normal local gates on Windows before merging:
 
 ```powershell
-dotnet restore .\Hakamiq.CsoKit.slnx -r win-x64 -p:NuGetAudit=false
-dotnet build .\Hakamiq.CsoKit.slnx -c Debug --no-restore -p:NuGetAudit=false
-dotnet test .\Hakamiq.CsoKit.slnx -c Debug --no-build
+dotnet restore .\CsoKit.slnx -r win-x64 -p:NuGetAudit=false
+dotnet build .\CsoKit.slnx -c Debug --no-restore -p:NuGetAudit=false
+dotnet test .\CsoKit.slnx -c Debug --no-build
 .\scripts\Publish-Release.ps1
 .\scripts\Verify-Release.ps1
 ```
@@ -160,8 +160,8 @@ dotnet test .\Hakamiq.CsoKit.slnx -c Debug --no-build
 - Treat native backend support as runtime availability, ABI verification, `native-info`, and fallback infrastructure only.
 - Reject the unproven native compression performance claim for 0.5.0 after measured native-runtime fast was slower and slightly larger than managed-runtime fast on the real PSP ISO.
 - Do not retain native block store hints or any native compression hot-path change in production.
-- Keep `HAKAMIQ_CSO_DISABLE_NATIVE` as an explicit diagnostic and benchmark fallback switch.
+- Keep `CSOKIT_DISABLE_NATIVE` as an explicit diagnostic and benchmark fallback switch.
 - Add `docs/R1_ARCHITECTURE_REPAIR.md` and refresh the release scorecard to separate native runtime proof from compression performance claims.
 
 
-- Remove stale external benchmark notes so Hakamiq.CsoKit remains fully independent.
+- Remove stale external benchmark notes so CsoKit remains fully independent.

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <AssemblyName>CsoKit.Core</AssemblyName>
+    <RootNamespace>CsoKit.Core</RootNamespace>
+    <Authors>HAKAMIQ</Authors>
+    <Company>HAKAMIQ</Company>
+    <Product>CsoKit</Product>
+  </PropertyGroup>
+
+</Project>
+

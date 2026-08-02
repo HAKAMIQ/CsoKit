@@ -1,68 +1,70 @@
-# Hakamiq CsoKit
+# CsoKit
 
-Hakamiq CsoKit is a Windows x64 toolkit for PSP ISO and CSO files. Use the desktop app for normal work, or the CLI when you want scripting and exact control.
+CsoKit is a Windows x64 toolkit for PSP ISO and CSO files. Use the desktop app for normal work, or the CLI when you want scripting and exact control.
 
 ## Download
 
-Grab the latest Windows x64 package from the [Releases page](https://github.com/HAKAMIQ/Hakamiq.CsoKit/releases/latest):
+Grab the latest Windows x64 package from the [Releases page](https://github.com/HAKAMIQ/CsoKit/releases/latest):
 
-    hakamiq-csokit-*-win-x64.zip
+    csokit-*-win-x64.zip
 
-Extract it anywhere. Keep `Hakamiq.Cso.Native.dll` next to the executables.
+Extract it anywhere. Keep `CsoKit.Native.dll` next to the executables.
 
 ## Quick start
 
 Desktop app:
 
-    .\Hakamiq.Cso.App.exe
+    .\CsoKit.App.exe
 
 CLI help:
 
-    .\hakamiq-cso.exe --help
+    .\csokit.exe --help
 
 Version:
 
-    .\hakamiq-cso.exe --version
+    .\csokit.exe --version
 
 ## Common commands
 
 Show CSO information:
 
-    .\hakamiq-cso.exe info ".\game.cso"
+    .\csokit.exe info ".\game.cso"
 
 Verify a CSO file:
 
-    .\hakamiq-cso.exe verify ".\game.cso"
+    .\csokit.exe verify ".\game.cso"
 
 Deep-verify and calculate SHA256:
 
-    .\hakamiq-cso.exe verify ".\game.cso" --deep --sha256
+    .\csokit.exe verify ".\game.cso" --deep --sha256
 
 Detect an input format:
 
-    .\hakamiq-cso.exe detect ".\game.iso"
+    .\csokit.exe detect ".\game.iso"
 
 Analyze a PSP ISO:
 
-    .\hakamiq-cso.exe analyze ".\game.iso" --psp
+    .\csokit.exe analyze ".\game.iso" --psp
 
 Compress ISO to CSO:
 
-    .\hakamiq-cso.exe compress ".\game.iso"
+    .\csokit.exe compress ".\game.iso"
 
 Use the fast profile:
 
-    .\hakamiq-cso.exe compress ".\game.iso" --profile fast
+    .\csokit.exe compress ".\game.iso" --profile fast
 
 Decompress CSO to ISO:
 
-    .\hakamiq-cso.exe decompress ".\game.cso"
+    .\csokit.exe decompress ".\game.cso"
 
 Repair or normalize readable input into CSO1:
 
-    .\hakamiq-cso.exe repair ".\game.cso" -o ".\fixed.cso" --profile game-safe --deep-verify
+    .\csokit.exe repair ".\game.cso" -o ".\fixed.cso" --profile game-safe --deep-verify
 
 Profiles: `game-safe` default, `compat`, `fast`, `smallest`, `archive-smallest`.
+
+Output base names must be 2 to 10 characters; `.cso` and `.iso` extensions are not counted. Automatically suggested names follow this limit.
 
 Full CLI reference: [docs/CLI.md](docs/CLI.md).
 
@@ -86,7 +88,7 @@ Full CLI reference: [docs/CLI.md](docs/CLI.md).
 
 ## Limitations
 
-Hakamiq CsoKit focuses on PSP ISO/CSO workflows.
+CsoKit focuses on PSP ISO/CSO workflows.
 ZSO, DAX, and CSO2 are readable input containers; CSO1 is the default output format.
 Verification checks file structure, not emulator or device compatibility.
 
@@ -94,3 +96,9 @@ Verification checks file structure, not emulator or device compatibility.
 
 - [CLI reference](docs/CLI.md)
 - [Contributor scripts and release gates](CONTRIBUTING.md)
+## Architecture and safety
+
+The repository is split into `CsoKit.Core`, `CsoKit.Application`, CLI, and WPF adapters.
+Production native loading is limited to the application directory and requires ABI 2.
+Compression workers are bounded, and cancellation is propagated through verification,
+repair, and final output promotion. See `docs/SECURITY_HARDENING.md`.

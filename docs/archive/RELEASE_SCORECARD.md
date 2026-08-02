@@ -1,4 +1,4 @@
-# Hakamiq.CsoKit Release Scorecard — R3-D
+# CsoKit Release Scorecard — R3-D
 
 ## Current status
 
@@ -40,8 +40,8 @@ git status --short
 # Run the local forbidden external-comparison hook scan before release.
 scripts/Test-RepoTextEncoding.ps1
 scripts/Build-Native.ps1 -Configuration Release -Platform x64
-dotnet build Hakamiq.CsoKit.slnx --no-restore
-dotnet test Hakamiq.CsoKit.slnx --no-build --no-restore
+dotnet build CsoKit.slnx --no-restore
+dotnet test CsoKit.slnx --no-build --no-restore
 scripts/Run-ReleaseGate.ps1 -SkipRealIsoGates
 ```
 

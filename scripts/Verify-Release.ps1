@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = "0.6.0",
+    [string]$Version = "",
     [string]$Runtime = "win-x64"
 )
 
@@ -61,18 +61,25 @@ function Test-BlockedArtifacts {
 }
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$versionFile = Join-Path $RepoRoot "VERSION"
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    $Version = (Get-Content -LiteralPath $versionFile -Raw).Trim()
+}
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    throw "VERSION is empty."
+}
 $ArtifactsDir = Join-Path $RepoRoot "artifacts"
 $PublishDir = Join-Path (Join-Path $ArtifactsDir "publish") $Runtime
 $ReleaseDir = Join-Path $ArtifactsDir "release"
-$ExePath = Join-Path $PublishDir "hakamiq-cso.exe"
-$NativeDllPath = Join-Path $PublishDir "Hakamiq.Cso.Native.dll"
+$ExePath = Join-Path $PublishDir "csokit.exe"
+$NativeDllPath = Join-Path $PublishDir "CsoKit.Native.dll"
 $ReleaseNotesPath = Join-Path $PublishDir "RELEASE_NOTES.md"
 $ThirdPartyNoticesPath = Join-Path $PublishDir "THIRD_PARTY_NOTICES.md"
 $ManifestPath = Join-Path $PublishDir "SHA256SUMS.txt"
-$ZipPath = Join-Path $ReleaseDir "hakamiq-csokit-$Version-$Runtime.zip"
+$ZipPath = Join-Path $ReleaseDir "csokit-$Version-$Runtime.zip"
 $ZipCheckDir = Join-Path $ArtifactsDir "verify-release-check"
 
-Write-Host "Hakamiq CsoKit Release Verifier"
+Write-Host "CsoKit Release Verifier"
 Write-Host "Version: $Version"
 Write-Host "Runtime: $Runtime"
 Write-Host ""
@@ -143,7 +150,7 @@ if ($manifestLines.Count -lt 4) {
 
 $manifestText = $manifestLines | Out-String
 
-foreach ($requiredFile in @("hakamiq-cso.exe", "Hakamiq.Cso.Native.dll", "README.md", "LICENSE.txt", "RELEASE_NOTES.md", "THIRD_PARTY_NOTICES.md")) {
+foreach ($requiredFile in @("csokit.exe", "CsoKit.Native.dll", "README.md", "LICENSE.txt", "RELEASE_NOTES.md", "THIRD_PARTY_NOTICES.md")) {
     if ($manifestText -notmatch [regex]::Escape($requiredFile)) {
         throw "SHA256 manifest does not contain required file: $requiredFile"
     }
@@ -155,8 +162,8 @@ New-Item -ItemType Directory -Force $ZipCheckDir | Out-Null
 try {
     Expand-Archive -Path $ZipPath -DestinationPath $ZipCheckDir -Force
 
-    $ZipExePath = Join-Path $ZipCheckDir "hakamiq-cso.exe"
-    $ZipNativeDllPath = Join-Path $ZipCheckDir "Hakamiq.Cso.Native.dll"
+    $ZipExePath = Join-Path $ZipCheckDir "csokit.exe"
+    $ZipNativeDllPath = Join-Path $ZipCheckDir "CsoKit.Native.dll"
     $ZipManifestPath = Join-Path $ZipCheckDir "SHA256SUMS.txt"
     $ZipReleaseNotesPath = Join-Path $ZipCheckDir "RELEASE_NOTES.md"
     $ZipThirdPartyNoticesPath = Join-Path $ZipCheckDir "THIRD_PARTY_NOTICES.md"
@@ -185,7 +192,7 @@ try {
 
     $zipManifestText = Get-Content $ZipManifestPath | Out-String
 
-    foreach ($requiredFile in @("hakamiq-cso.exe", "Hakamiq.Cso.Native.dll", "README.md", "LICENSE.txt", "RELEASE_NOTES.md", "THIRD_PARTY_NOTICES.md")) {
+    foreach ($requiredFile in @("csokit.exe", "CsoKit.Native.dll", "README.md", "LICENSE.txt", "RELEASE_NOTES.md", "THIRD_PARTY_NOTICES.md")) {
         if ($zipManifestText -notmatch [regex]::Escape($requiredFile)) {
             throw "ZIP SHA256 manifest does not contain required file: $requiredFile"
         }
