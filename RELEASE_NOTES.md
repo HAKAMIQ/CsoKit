@@ -1,30 +1,64 @@
-# CsoKit 0.6.0
+# CsoKit 0.6.1
 
-Windows x64 release for PSP ISO and compressed disc-image workflows.
+CsoKit 0.6.1 is a security, reliability, and release-quality update for Windows x64.
 
-## Main functions
+## Main changes
 
-- Detect and inspect supported containers.
+- Restrict production native-library loading to the application directory.
+- Validate native ABI compatibility before native codecs are used.
+- Improve cancellation for verification, compression, decompression, repair, CLI Ctrl+C, and the desktop Stop action.
+- Prevent incomplete output from replacing the final destination after cancellation or failure.
+- Apply bounded compression-worker limits and safe queue sizing.
+- Add a central Application layer shared by the CLI and desktop interface.
+- Enforce output base names containing 2 to 10 Unicode characters.
+- Improve early CLI validation and JSON failure responses.
+- Strengthen verification and repair handling for supported containers.
+- Repair the standalone published-executable smoke test and include it in the main verification gate.
+- Simplify end-user documentation and remove internal reports.
+
+## Supported workflows
+
+- Detect and inspect ISO, CSO, ZSO, DAX, and supported CSO2 input.
 - Analyze PSP ISO structure.
-- Verify CSO, ZSO, and DAX input.
+- Verify compressed containers, including deep block verification and SHA-256.
 - Compress ISO into CSO1.
 - Decompress CSO into ISO.
 - Rebuild readable input into verified CSO1 output.
-- Produce JSON output for automation.
+- Produce structured JSON output for scripts.
+
+## Recommended usage
+
+Recommended compression profile:
+
+    .\csokit.exe compress ".\game.iso" --profile game-safe
+
+Verify important output before deleting the original image:
+
+    .\csokit.exe verify ".\game.cso" --deep --sha256
 
 ## Installation
 
-Extract the complete release ZIP and keep `csokit.exe` beside `CsoKit.Native.dll`.
-
-Run:
+1. Download csokit-0.6.1-win-x64.zip.
+2. Extract the complete archive into one folder.
+3. Keep csokit.exe beside CsoKit.Native.dll.
+4. Run:
 
     .\csokit.exe native-info
     .\csokit.exe --help
 
-## Important
+## Verification
 
-- `game-safe` is the recommended compression profile.
-- Output base names must contain 2 to 10 Unicode characters.
-- Existing output is not overwritten without `--force`.
-- Repair cannot reconstruct unreadable source data.
-- Verification checks structure, not emulator compatibility.
+- Debug build: PASS.
+- Release build: PASS.
+- Automated tests: 201/201 PASS.
+- Native integration: PASS.
+- Published executable smoke: PASS.
+- Native ISO to CSO to ISO round-trip: PASS.
+- Release package verification: PASS.
+
+## Important notes
+
+- Existing output files are not overwritten unless --force is supplied.
+- Repair cannot recreate unreadable or missing source data.
+- Structural verification does not guarantee emulator or physical-device compatibility.
+- Output base names must contain 2 to 10 Unicode characters; the extension is not counted.
