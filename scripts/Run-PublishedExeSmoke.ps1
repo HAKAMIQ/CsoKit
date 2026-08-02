@@ -15,6 +15,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "OutputFileNamePolicy.ps1")
+
 function Write-GateHeader {
     param(
         [string]$Title
@@ -136,13 +138,13 @@ function Test-HelpSmoke {
     $text = Invoke-Exe -Arguments @( "--help" ) -ExpectedExitCodes @(0) -StepName "published help smoke"
 
     foreach ($required in @(
-        "hakamiq-cso info <input.cso>",
-        "hakamiq-cso verify <input.cso>",
-        "hakamiq-cso repair <input.iso|input.cso>",
-        "hakamiq-cso analyze <input.iso>",
-        "hakamiq-cso detect <input>",
-        "hakamiq-cso decompress <input.cso>",
-        "hakamiq-cso compress <input.iso>",
+        "csokit info <input.cso>",
+        "csokit verify <input.cso|input.zso|input.dax>",
+        "csokit repair <input.iso|input.cso>",
+        "csokit analyze <input.iso>",
+        "csokit detect <input>",
+        "csokit decompress <input.cso>",
+        "csokit compress <input.iso>",
         "--profile <game-safe|compat|fast|smallest|archive-smallest>",
         "[--fast]",
         "--threads <n>",
@@ -250,11 +252,14 @@ function Test-PublishedRoundtripProfile {
         [string]$Profile
     )
 
-    $csoPath = Join-Path $WorkDir ("published-$Profile.cso")
-    $restoredIsoPath = Join-Path $WorkDir ("published-$Profile-restored.iso")
+    $profileRoot = Join-Path $WorkDir $Profile
+    $csoPath = Join-Path $profileRoot "out.cso"
+    $restoredIsoPath = Join-Path $profileRoot "back.iso"
+    Assert-CsoKitOutputFileName -Path $csoPath -Context "Published profile CSO"
+    Assert-CsoKitOutputFileName -Path $restoredIsoPath -Context "Published profile restored ISO"
 
-    Remove-Item -LiteralPath $csoPath -Force -ErrorAction SilentlyContinue
-    Remove-Item -LiteralPath $restoredIsoPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $profileRoot -Recurse -Force -ErrorAction SilentlyContinue
+    New-Item -ItemType Directory -Force -Path $profileRoot | Out-Null
 
     $compressJson = Invoke-ExeJson -Arguments @(
         "compress",
@@ -336,12 +341,14 @@ function Test-PublishedRoundtripProfile {
 }
 
 $RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
-$SolutionPath = Join-Path $RepoRoot "Hakamiq.CsoKit.slnx"
-$CliProject = Join-Path $RepoRoot "src\Hakamiq.Cso.Cli\Hakamiq.Cso.Cli.csproj"
+$SolutionPath = Join-Path $RepoRoot "CsoKit.slnx"
+$CliProject = Join-Path $RepoRoot "src\CsoKit.Cli\CsoKit.Cli.csproj"
 $ArtifactsRoot = Join-Path $RepoRoot "artifacts"
 $PublishDir = Join-Path (Join-Path $ArtifactsRoot "published-exe-smoke") $Runtime
 $WorkDir = Join-Path (Join-Path $ArtifactsRoot "published-exe-smoke-work") $Runtime
-$ExePath = Join-Path $PublishDir "hakamiq-cso.exe"
+$ExePath = Join-Path $PublishDir "csokit.exe"
+$NativeDllPath = Join-Path $RepoRoot "artifacts\native-build\win-x64\Release\CsoKit.Native.dll"
+$PublishNativeDllPath = Join-Path $PublishDir "CsoKit.Native.dll"
 
 if (-not (Test-Path -LiteralPath $SolutionPath)) {
     throw "Solution file was not found: $SolutionPath"
@@ -349,6 +356,10 @@ if (-not (Test-Path -LiteralPath $SolutionPath)) {
 
 if (-not (Test-Path -LiteralPath $CliProject)) {
     throw "CLI project was not found: $CliProject"
+}
+
+if ($Runtime -ne "win-x64") {
+    throw "Published native smoke currently supports win-x64 only. Runtime requested: $Runtime"
 }
 
 $ResolvedInputIso = $null
@@ -361,7 +372,7 @@ if (-not $SkipRealIsoGates) {
     $OriginalHash = (Get-FileHash -LiteralPath $ResolvedInputIso -Algorithm SHA256).Hash
 }
 
-Write-GateHeader -Title "Hakamiq CsoKit Published EXE Smoke"
+Write-GateHeader -Title "CsoKit Published EXE Smoke"
 Write-Host "Repo:          $RepoRoot"
 Write-Host "Configuration: $Configuration"
 Write-Host "Runtime:       $Runtime"
@@ -377,6 +388,14 @@ Invoke-GateStep -Name "dotnet restore" -Action {
         $Runtime,
         "-p:NuGetAudit=false"
     )
+}
+
+Invoke-GateStep -Name "build native backend" -Action {
+    & (Join-Path $PSScriptRoot "Build-Native.ps1") -Configuration Release -Platform x64
+
+    if (-not (Test-Path -LiteralPath $NativeDllPath -PathType Leaf)) {
+        throw "Native DLL was not produced: $NativeDllPath"
+    }
 }
 
 Invoke-GateStep -Name "dotnet publish" -Action {
@@ -401,8 +420,14 @@ Invoke-GateStep -Name "dotnet publish" -Action {
         "-p:NuGetAudit=false"
     )
 
-    if (-not (Test-Path -LiteralPath $ExePath)) {
+    if (-not (Test-Path -LiteralPath $ExePath -PathType Leaf)) {
         throw "Published executable was not found: $ExePath"
+    }
+
+    Copy-Item -LiteralPath $NativeDllPath -Destination $PublishNativeDllPath -Force
+
+    if (-not (Test-Path -LiteralPath $PublishNativeDllPath -PathType Leaf)) {
+        throw "Published native DLL was not staged: $PublishNativeDllPath"
     }
 }
 

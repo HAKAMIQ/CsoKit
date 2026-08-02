@@ -56,9 +56,9 @@ function Assert-NativeSourceLayout {
     )
 
     $requiredFiles = @(
-        "native\Hakamiq.Cso.Native\CMakeLists.txt",
-        "native\Hakamiq.Cso.Native\src\hakamiq_cso_native.cpp",
-        "native\Hakamiq.Cso.Native\include\hakamiq_cso_native.h",
+        "native\CsoKit.Native\CMakeLists.txt",
+        "native\CsoKit.Native\src\csokit_native.cpp",
+        "native\CsoKit.Native\include\csokit_native.h",
         "native\third_party\zopfli\src\zopfli\zopfli_lib.c"
     )
 
@@ -104,10 +104,10 @@ if ($Platform -ne "x64") {
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$nativeRoot = Join-Path $repoRoot "native\Hakamiq.Cso.Native"
+$nativeRoot = Join-Path $repoRoot "native\CsoKit.Native"
 $buildDir = Join-Path $repoRoot "artifacts\native-build\win-x64"
 
-Write-Host "Hakamiq CsoKit Native Builder"
+Write-Host "CsoKit Native Builder"
 Write-Host "Configuration: $Configuration"
 Write-Host "Platform:      $Platform"
 Write-Host ""
@@ -161,7 +161,7 @@ if (-not $directBuildSucceeded) {
     }
 }
 
-$dllPath = Join-Path $buildDir "$Configuration\Hakamiq.Cso.Native.dll"
+$dllPath = Join-Path $buildDir "$Configuration\CsoKit.Native.dll"
 
 if (-not (Test-Path -LiteralPath $dllPath -PathType Leaf)) {
     throw "Native DLL was not produced: $dllPath"

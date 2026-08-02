@@ -12,6 +12,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "OutputFileNamePolicy.ps1")
+
 function Get-ResolvedFilePath {
     param(
         [string]$Path,
@@ -37,32 +39,7 @@ function Get-ResolvedFilePath {
     return $item.FullName
 }
 
-function New-UniqueSiblingPath {
-    param(
-        [string]$DirectoryPath,
-        [string]$BaseName,
-        [string]$Suffix,
-        [string]$Extension
-    )
-
-    $candidate = Join-Path $DirectoryPath ("{0}{1}{2}" -f $BaseName, $Suffix, $Extension)
-
-    if (-not (Test-Path -LiteralPath $candidate)) {
-        return $candidate
-    }
-
-    for ($index = 2; $index -lt 10000; $index++) {
-        $candidate = Join-Path $DirectoryPath ("{0}{1} {2}{3}" -f $BaseName, $Suffix, $index, $Extension)
-
-        if (-not (Test-Path -LiteralPath $candidate)) {
-            return $candidate
-        }
-    }
-
-    throw "Could not find a free artifact name in: $DirectoryPath"
-}
-
-function Invoke-HakamiqCso {
+function Invoke-CsoKit {
     param(
         [string]$StepName,
         [string[]]$CommandArguments
@@ -126,7 +103,7 @@ function Get-NormalizedProfiles {
 }
 
 $RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
-$CliProject = Join-Path $RepoRoot "src\Hakamiq.Cso.Cli\Hakamiq.Cso.Cli.csproj"
+$CliProject = Join-Path $RepoRoot "src\CsoKit.Cli\CsoKit.Cli.csproj"
 
 if (-not (Test-Path -LiteralPath $CliProject)) {
     throw "CLI project was not found: $CliProject"
@@ -141,27 +118,28 @@ if (-not [string]::Equals($InputItem.Extension, ".iso", [System.StringComparison
 
 $ProfileList = Get-NormalizedProfiles -ProfileNames $Profiles
 $DirectoryPath = $InputItem.DirectoryName
-$BaseName = [System.IO.Path]::GetFileNameWithoutExtension($InputItem.Name)
+$WorkRoot = Join-Path $DirectoryPath (".csokit-profiles-" + [System.Guid]::NewGuid().ToString("N"))
 $OriginalHash = Get-Sha256Hex -Path $InputIsoPath
 $OriginalSize = (Get-Item -LiteralPath $InputIsoPath).Length
-$Artifacts = New-Object System.Collections.Generic.List[string]
 $Results = New-Object System.Collections.Generic.List[object]
 $success = $false
 
-Write-Host "Hakamiq CsoKit Profile Roundtrip Matrix"
+Write-Host "CsoKit Profile Roundtrip Matrix"
 Write-Host "Input:     $InputIsoPath"
 Write-Host "Profiles:  $($ProfileList -join ', ')"
 Write-Host "Artifacts: $(if ($KeepArtifacts) { 'kept' } else { 'deleted on success' })"
 Write-Host "SHA256:    $OriginalHash"
 
 try {
-    foreach ($profile in $ProfileList) {
-        $profileLabel = $profile.Substring(0, 1).ToUpperInvariant() + $profile.Substring(1)
-        $CsoArtifactPath = New-UniqueSiblingPath -DirectoryPath $DirectoryPath -BaseName $BaseName -Suffix " - Hakamiq $profileLabel Profile Gate" -Extension ".cso"
-        $RestoredIsoPath = New-UniqueSiblingPath -DirectoryPath $DirectoryPath -BaseName $BaseName -Suffix " - Hakamiq $profileLabel Profile Restored" -Extension ".iso"
+    New-Item -ItemType Directory -Force -Path $WorkRoot | Out-Null
 
-        $Artifacts.Add($CsoArtifactPath) | Out-Null
-        $Artifacts.Add($RestoredIsoPath) | Out-Null
+    foreach ($profile in $ProfileList) {
+        $profileRoot = Join-Path $WorkRoot $profile
+        New-Item -ItemType Directory -Force -Path $profileRoot | Out-Null
+        $CsoArtifactPath = Join-Path $profileRoot "out.cso"
+        $RestoredIsoPath = Join-Path $profileRoot "back.iso"
+        Assert-CsoKitOutputFileName -Path $CsoArtifactPath -Context "Profile matrix CSO"
+        Assert-CsoKitOutputFileName -Path $RestoredIsoPath -Context "Profile matrix restored ISO"
 
         Write-Host ""
         Write-Host "Profile: $profile"
@@ -178,15 +156,15 @@ try {
             $decompressArgs += "--quiet"
         }
 
-        Invoke-HakamiqCso -StepName "Compress ISO to CSO ($profile)" -CommandArguments $compressArgs
+        Invoke-CsoKit -StepName "Compress ISO to CSO ($profile)" -CommandArguments $compressArgs
 
         if (-not (Test-Path -LiteralPath $CsoArtifactPath)) {
             throw "Compression completed but CSO artifact was not found: $CsoArtifactPath"
         }
 
-        Invoke-HakamiqCso -StepName "Deep verify CSO ($profile)" -CommandArguments $verifyArgs
+        Invoke-CsoKit -StepName "Deep verify CSO ($profile)" -CommandArguments $verifyArgs
 
-        Invoke-HakamiqCso -StepName "Decompress CSO to ISO ($profile)" -CommandArguments $decompressArgs
+        Invoke-CsoKit -StepName "Decompress CSO to ISO ($profile)" -CommandArguments $decompressArgs
 
         if (-not (Test-Path -LiteralPath $RestoredIsoPath)) {
             throw "Decompression completed but restored ISO was not found: $RestoredIsoPath"
@@ -228,14 +206,14 @@ try {
 }
 finally {
     if ($success -and -not $KeepArtifacts) {
-        foreach ($artifact in $Artifacts) {
-            Remove-Item -LiteralPath $artifact -Force -ErrorAction SilentlyContinue
-        }
-
+        Remove-Item -LiteralPath $WorkRoot -Recurse -Force -ErrorAction SilentlyContinue
         Write-Host "Artifacts removed."
     }
-    elseif (-not $success) {
+    elseif ($success) {
+        Write-Host "Artifacts kept: $WorkRoot"
+    }
+    else {
         Write-Host "Status: FAILED"
-        Write-Host "Artifacts were kept for inspection if they were created."
+        Write-Host "Artifacts were kept for inspection: $WorkRoot"
     }
 }

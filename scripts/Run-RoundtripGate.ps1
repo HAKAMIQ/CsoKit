@@ -10,6 +10,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "OutputFileNamePolicy.ps1")
+
 function Get-ResolvedFilePath {
     param(
         [string]$Path,
@@ -35,32 +37,7 @@ function Get-ResolvedFilePath {
     return $item.FullName
 }
 
-function New-UniqueSiblingPath {
-    param(
-        [string]$DirectoryPath,
-        [string]$BaseName,
-        [string]$Suffix,
-        [string]$Extension
-    )
-
-    $candidate = Join-Path $DirectoryPath ("{0}{1}{2}" -f $BaseName, $Suffix, $Extension)
-
-    if (-not (Test-Path -LiteralPath $candidate)) {
-        return $candidate
-    }
-
-    for ($index = 2; $index -lt 10000; $index++) {
-        $candidate = Join-Path $DirectoryPath ("{0}{1} {2}{3}" -f $BaseName, $Suffix, $index, $Extension)
-
-        if (-not (Test-Path -LiteralPath $candidate)) {
-            return $candidate
-        }
-    }
-
-    throw "Could not find a free artifact name in: $DirectoryPath"
-}
-
-function Invoke-HakamiqCso {
+function Invoke-CsoKit {
     param(
         [string]$StepName,
         [string[]]$CommandArguments
@@ -93,7 +70,7 @@ function Get-Sha256Hex {
 }
 
 $RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
-$CliProject = Join-Path $RepoRoot "src\Hakamiq.Cso.Cli\Hakamiq.Cso.Cli.csproj"
+$CliProject = Join-Path $RepoRoot "src\CsoKit.Cli\CsoKit.Cli.csproj"
 
 if (-not (Test-Path -LiteralPath $CliProject)) {
     throw "CLI project was not found: $CliProject"
@@ -107,9 +84,11 @@ if (-not [string]::Equals($InputItem.Extension, ".iso", [System.StringComparison
 }
 
 $DirectoryPath = $InputItem.DirectoryName
-$BaseName = [System.IO.Path]::GetFileNameWithoutExtension($InputItem.Name)
-$CsoArtifactPath = New-UniqueSiblingPath -DirectoryPath $DirectoryPath -BaseName $BaseName -Suffix " - Hakamiq Roundtrip Gate" -Extension ".cso"
-$RestoredIsoPath = New-UniqueSiblingPath -DirectoryPath $DirectoryPath -BaseName $BaseName -Suffix " - Hakamiq Roundtrip Restored" -Extension ".iso"
+$WorkRoot = Join-Path $DirectoryPath (".csokit-roundtrip-" + [System.Guid]::NewGuid().ToString("N"))
+$CsoArtifactPath = Join-Path $WorkRoot "out.cso"
+$RestoredIsoPath = Join-Path $WorkRoot "back.iso"
+Assert-CsoKitOutputFileName -Path $CsoArtifactPath -Context "Round-trip gate CSO"
+Assert-CsoKitOutputFileName -Path $RestoredIsoPath -Context "Round-trip gate restored ISO"
 
 $compressArgs = @("compress", $InputIsoPath, "-o", $CsoArtifactPath)
 $verifyArgs = @("verify", $CsoArtifactPath, "--deep", "--sha256")
@@ -120,7 +99,7 @@ if ($Quiet) {
     $decompressArgs += "--quiet"
 }
 
-Write-Host "Hakamiq CsoKit Roundtrip Gate"
+Write-Host "CsoKit Roundtrip Gate"
 Write-Host "Input:       $InputIsoPath"
 Write-Host "CSO output:  $CsoArtifactPath"
 Write-Host "ISO output:  $RestoredIsoPath"
@@ -129,17 +108,18 @@ Write-Host "Artifacts:   $(if ($KeepArtifacts) { 'kept' } else { 'deleted on suc
 $success = $false
 
 try {
+    New-Item -ItemType Directory -Force -Path $WorkRoot | Out-Null
     $originalHash = Get-Sha256Hex -Path $InputIsoPath
 
-    Invoke-HakamiqCso -StepName "Compress ISO to CSO" -CommandArguments $compressArgs
+    Invoke-CsoKit -StepName "Compress ISO to CSO" -CommandArguments $compressArgs
 
     if (-not (Test-Path -LiteralPath $CsoArtifactPath)) {
         throw "Compression completed but CSO artifact was not found: $CsoArtifactPath"
     }
 
-    Invoke-HakamiqCso -StepName "Deep verify CSO" -CommandArguments $verifyArgs
+    Invoke-CsoKit -StepName "Deep verify CSO" -CommandArguments $verifyArgs
 
-    Invoke-HakamiqCso -StepName "Decompress CSO to ISO" -CommandArguments $decompressArgs
+    Invoke-CsoKit -StepName "Decompress CSO to ISO" -CommandArguments $decompressArgs
 
     if (-not (Test-Path -LiteralPath $RestoredIsoPath)) {
         throw "Decompression completed but restored ISO was not found: $RestoredIsoPath"
@@ -173,12 +153,14 @@ try {
 }
 finally {
     if ($success -and -not $KeepArtifacts) {
-        Remove-Item -LiteralPath $CsoArtifactPath -Force -ErrorAction SilentlyContinue
-        Remove-Item -LiteralPath $RestoredIsoPath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $WorkRoot -Recurse -Force -ErrorAction SilentlyContinue
         Write-Host "Artifacts removed."
     }
-    elseif (-not $success) {
+    elseif ($success) {
+        Write-Host "Artifacts kept: $WorkRoot"
+    }
+    else {
         Write-Host "Status: FAILED"
-        Write-Host "Artifacts were kept for inspection if they were created."
+        Write-Host "Artifacts were kept for inspection: $WorkRoot"
     }
 }

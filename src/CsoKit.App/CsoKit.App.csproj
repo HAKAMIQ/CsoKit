@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+
+    <AssemblyName>CsoKit.App</AssemblyName>
+    <RootNamespace>CsoKit.App</RootNamespace>
+    <Authors>HAKAMIQ</Authors>
+    <Company>HAKAMIQ</Company>
+    <Product>CsoKit App</Product>
+
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+
+    <ApplicationIcon>Assets\Icons\csokit.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CsoKit.Core\CsoKit.Core.csproj" />
+    <ProjectReference Include="..\CsoKit.Application\CsoKit.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Assets\Icons\csokit.ico" />
+    <None Remove="Assets\Icons\csokit_32.png" />
+    <None Remove="Assets\Icons\status_success.png" />
+    <None Remove="Assets\Icons\status_error.png" />
+    <None Remove="Assets\Icons\advanced_key.png" />
+
+    <Resource Include="Assets\Icons\csokit.ico" />
+    <Resource Include="Assets\Icons\csokit_32.png" />
+    <Resource Include="Assets\Icons\status_success.png" />
+    <Resource Include="Assets\Icons\status_error.png" />
+    <Resource Include="Assets\Icons\advanced_key.png" />
+  </ItemGroup>
+
+</Project>

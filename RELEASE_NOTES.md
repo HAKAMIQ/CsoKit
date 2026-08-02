@@ -1,4 +1,4 @@
-# Hakamiq CsoKit 0.6.0
+# CsoKit 0.6.0
 
 Windows x64 release focused on PSP ISO/CSO workflows, WPF usability, and release-grade verification.
 
@@ -40,7 +40,7 @@ If NuGet vulnerability metadata times out with `NU1900`, retry later. If you mus
 
 The official GitHub release provides:
 
-    hakamiq-csokit-0.6.0-win-x64.zip
+    csokit-0.6.0-win-x64.zip
     SHA256SUMS.txt
 
 Download from the GitHub Releases page.

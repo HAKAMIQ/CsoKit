@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = "0.6.0",
+    [string]$Version = "",
     [string]$Runtime = "win-x64",
     [string]$InputIso,
     [switch]$SkipRealIsoGate,
@@ -301,21 +301,28 @@ if ($Runtime -ne "win-x64") {
 }
 
 $RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
-$SolutionPath = Join-Path $RepoRoot "Hakamiq.CsoKit.slnx"
-$CoreProject = Join-Path $RepoRoot "src\Hakamiq.Cso.Core\Hakamiq.Cso.Core.csproj"
-$CliProject = Join-Path $RepoRoot "src\Hakamiq.Cso.Cli\Hakamiq.Cso.Cli.csproj"
-$AppProject = Join-Path $RepoRoot "src\Hakamiq.Cso.App\Hakamiq.Cso.App.csproj"
-$NativeSource = Join-Path $RepoRoot "native\Hakamiq.Cso.Native\src\hakamiq_cso_native.cpp"
-$NativeCMake = Join-Path $RepoRoot "native\Hakamiq.Cso.Native\CMakeLists.txt"
+$versionFile = Join-Path $RepoRoot "VERSION"
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    $Version = (Get-Content -LiteralPath $versionFile -Raw).Trim()
+}
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    throw "VERSION is empty."
+}
+$SolutionPath = Join-Path $RepoRoot "CsoKit.slnx"
+$CoreProject = Join-Path $RepoRoot "src\CsoKit.Core\CsoKit.Core.csproj"
+$CliProject = Join-Path $RepoRoot "src\CsoKit.Cli\CsoKit.Cli.csproj"
+$AppProject = Join-Path $RepoRoot "src\CsoKit.App\CsoKit.App.csproj"
+$NativeSource = Join-Path $RepoRoot "native\CsoKit.Native\src\csokit_native.cpp"
+$NativeCMake = Join-Path $RepoRoot "native\CsoKit.Native\CMakeLists.txt"
 $ArtifactsDir = Join-Path $RepoRoot "artifacts"
 $PublishRoot = Join-Path $ArtifactsDir "publish"
 $ReleaseRoot = Join-Path $ArtifactsDir "release"
-$CliPublishDir = Join-Path $PublishRoot "Hakamiq.CsoKit-cli-$Runtime"
-$AppPublishDir = Join-Path $PublishRoot "Hakamiq.CsoKit-app-$Runtime"
-$CliZip = Join-Path $ReleaseRoot "hakamiq-csokit-$Version-cli-$Runtime.zip"
-$AppZip = Join-Path $ReleaseRoot "hakamiq-csokit-$Version-app-$Runtime.zip"
+$CliPublishDir = Join-Path $PublishRoot "CsoKit-cli-$Runtime"
+$AppPublishDir = Join-Path $PublishRoot "CsoKit-app-$Runtime"
+$CliZip = Join-Path $ReleaseRoot "csokit-$Version-cli-$Runtime.zip"
+$AppZip = Join-Path $ReleaseRoot "csokit-$Version-app-$Runtime.zip"
 
-Write-Host "Hakamiq CsoKit Official Release Gate"
+Write-Host "CsoKit Official Release Gate"
 Write-Host "-------------------------------------"
 Write-Host "Repo:       $RepoRoot"
 Write-Host "Version:    $Version"
@@ -390,12 +397,12 @@ Invoke-Step "publish App" {
 }
 
 Invoke-Step "CLI smoke" {
-    Invoke-CliSmoke -ExePath (Join-Path $CliPublishDir "hakamiq-cso.exe")
+    Invoke-CliSmoke -ExePath (Join-Path $CliPublishDir "csokit.exe")
 }
 
 if (Test-ShouldRunRealIsoGate) {
     Invoke-Step "Raw ISO deep verify smoke" {
-        Invoke-RawIsoDeepVerifySmoke -ExePath (Join-Path $CliPublishDir "hakamiq-cso.exe") -IsoPath $InputIso
+        Invoke-RawIsoDeepVerifySmoke -ExePath (Join-Path $CliPublishDir "csokit.exe") -IsoPath $InputIso
     }
 }
 else {
@@ -412,7 +419,7 @@ Invoke-Step "create release ZIPs" {
 
 $summaryPath = Join-Path $ReleaseRoot "RELEASE_GATE_SUMMARY.txt"
 @(
-    "Hakamiq CsoKit Official Release Gate",
+    "CsoKit Official Release Gate",
     "Version: $Version",
     "Runtime: $Runtime",
     "Timestamp: $((Get-Date).ToString('o'))",

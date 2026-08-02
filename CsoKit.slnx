@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="src\CsoKit.Core\CsoKit.Core.csproj" />
+  <Project Path="src\CsoKit.Application\CsoKit.Application.csproj" />
+  <Project Path="src\CsoKit.Cli\CsoKit.Cli.csproj" />
+  <Project Path="src\CsoKit.App\CsoKit.App.csproj" />
+  <Project Path="tests\CsoKit.Tests\CsoKit.Tests.csproj" />
+  <Project Path="tests\CsoKit.App.Tests\CsoKit.App.Tests.csproj" />
+</Solution>

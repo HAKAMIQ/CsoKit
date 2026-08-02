@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = "0.6.0",
+    [string]$Version = "",
     [string]$Runtime = "win-x64",
     [string]$InputIso,
     [switch]$SkipRealIsoGates,
@@ -113,8 +113,8 @@ function Assert-FinalNativeBackend {
         [string]$ExpectedVersion
     )
 
-    $exePath = Join-Path $PublishDir "hakamiq-cso.exe"
-    $nativeDllPath = Join-Path $PublishDir "Hakamiq.Cso.Native.dll"
+    $exePath = Join-Path $PublishDir "csokit.exe"
+    $nativeDllPath = Join-Path $PublishDir "CsoKit.Native.dll"
 
     if (-not (Test-Path $exePath)) {
         throw "Published executable was not found for native backend check: $exePath"
@@ -162,19 +162,26 @@ function Assert-FinalNativeBackend {
 }
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$versionFile = Join-Path $RepoRoot "VERSION"
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    $Version = (Get-Content -LiteralPath $versionFile -Raw).Trim()
+}
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    throw "VERSION is empty."
+}
 $ReleaseGateScript = Join-Path $PSScriptRoot "Run-ReleaseGate.ps1"
 $PublishedSmokeScript = Join-Path $PSScriptRoot "Run-PublishedExeSmoke.ps1"
 $PublishReleaseScript = Join-Path $PSScriptRoot "Publish-Release.ps1"
 $VerifyReleaseScript = Join-Path $PSScriptRoot "Verify-Release.ps1"
 $PublishSourceScript = Join-Path $PSScriptRoot "Publish-SourcePackage.ps1"
-$CliProject = Join-Path $RepoRoot "src\Hakamiq.Cso.Cli\Hakamiq.Cso.Cli.csproj"
-$CoreProject = Join-Path $RepoRoot "src\Hakamiq.Cso.Core\Hakamiq.Cso.Core.csproj"
-$AppProject = Join-Path $RepoRoot "src\Hakamiq.Cso.App\Hakamiq.Cso.App.csproj"
+$CliProject = Join-Path $RepoRoot "src\CsoKit.Cli\CsoKit.Cli.csproj"
+$CoreProject = Join-Path $RepoRoot "src\CsoKit.Core\CsoKit.Core.csproj"
+$AppProject = Join-Path $RepoRoot "src\CsoKit.App\CsoKit.App.csproj"
 $PublishDir = Join-Path (Join-Path $RepoRoot "artifacts\publish") $Runtime
-$ReleaseZip = Join-Path (Join-Path $RepoRoot "artifacts\release") "hakamiq-csokit-$Version-$Runtime.zip"
-$SourceZip = Join-Path (Join-Path $RepoRoot "artifacts\source") "hakamiq-csokit-$Version-source.zip"
+$ReleaseZip = Join-Path (Join-Path $RepoRoot "artifacts\release") "csokit-$Version-$Runtime.zip"
+$SourceZip = Join-Path (Join-Path $RepoRoot "artifacts\source") "csokit-$Version-source.zip"
 
-Write-Host "Hakamiq CsoKit Final Release Gate"
+Write-Host "CsoKit Final Release Gate"
 Write-Host "---------------------------------"
 Write-Host "Repo:       $RepoRoot"
 Write-Host "Version:    $Version"

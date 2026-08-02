@@ -131,13 +131,13 @@ function Test-HelpSmoke {
     }
 
     foreach ($required in @(
-        "hakamiq-cso info <input.cso>",
-        "hakamiq-cso verify <input.cso>",
-        "hakamiq-cso repair <input.iso|input.cso>",
-        "hakamiq-cso analyze <input.iso>",
-        "hakamiq-cso detect <input>",
-        "hakamiq-cso decompress <input.cso>",
-        "hakamiq-cso compress <input.iso>",
+        "csokit info <input.cso>",
+        "csokit verify <input.cso>",
+        "csokit repair <input.iso|input.cso>",
+        "csokit analyze <input.iso>",
+        "csokit detect <input>",
+        "csokit decompress <input.cso>",
+        "csokit compress <input.iso>",
         "--profile <game-safe|compat|fast|smallest|archive-smallest>",
         "[--fast]",
         "--threads <n>",
@@ -202,8 +202,8 @@ function Invoke-ScriptFile {
 }
 
 $RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
-$SolutionPath = Join-Path $RepoRoot "Hakamiq.CsoKit.slnx"
-$CliProject = Join-Path $RepoRoot "src\Hakamiq.Cso.Cli\Hakamiq.Cso.Cli.csproj"
+$SolutionPath = Join-Path $RepoRoot "CsoKit.slnx"
+$CliProject = Join-Path $RepoRoot "src\CsoKit.Cli\CsoKit.Cli.csproj"
 $RoundtripGateScript = Join-Path $RepoRoot "scripts\Run-RoundtripGate.ps1"
 $ProfileMatrixScript = Join-Path $RepoRoot "scripts\Run-ProfileRoundtripMatrix.ps1"
 $NativeBuildScript = Join-Path $RepoRoot "scripts\Build-Native.ps1"
@@ -222,7 +222,7 @@ if (-not $SkipRealIsoGates) {
     $ResolvedInputIso = Get-ResolvedIsoPath -Path $InputIso
 }
 
-Write-GateHeader -Title "Hakamiq CsoKit Release Gate"
+Write-GateHeader -Title "CsoKit Release Gate"
 Write-Host "Repo:          $RepoRoot"
 Write-Host "Configuration: $Configuration"
 Write-Host "Real ISO:      $(if ($SkipRealIsoGates) { 'skipped' } else { $ResolvedInputIso })"

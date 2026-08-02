@@ -1,9 +1,9 @@
-Hakamiq CsoKit Proprietary License
+CsoKit Proprietary License
 
 Copyright (c) 2026 HAKAMIQ.
 All rights reserved.
 
-Hakamiq CsoKit is proprietary software owned by HAKAMIQ.
+CsoKit is proprietary software owned by HAKAMIQ.
 
 You may download and use the official compiled release binaries for personal, non-commercial use.
 

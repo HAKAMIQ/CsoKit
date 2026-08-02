@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-Hakamiq CsoKit uses a few third-party compression libraries in the native backend.
+CsoKit uses a few third-party compression libraries in the native backend.
 
 These components are not owned by HAKAMIQ. Each one stays under its original license.
 
@@ -11,7 +11,7 @@ These components are not owned by HAKAMIQ. Each one stays under its original lic
 - Native build version: v1.3.2
 - License: zlib License
 
-Hakamiq CsoKit uses zlib for raw-Deflate candidate trials, including default, filtered, Huffman-only, and RLE strategies.
+CsoKit uses zlib for raw-Deflate candidate trials, including default, filtered, Huffman-only, and RLE strategies.
 
 ## libdeflate
 
@@ -20,7 +20,7 @@ Hakamiq CsoKit uses zlib for raw-Deflate candidate trials, including default, fi
 - Native build version: v1.25
 - License: MIT License
 
-Hakamiq CsoKit uses libdeflate for raw-Deflate candidate trials at several compression levels.
+CsoKit uses libdeflate for raw-Deflate candidate trials at several compression levels.
 
 ## Zopfli
 
@@ -36,4 +36,4 @@ Zopfli is only used when `--zopfli` is explicitly requested. Normal compression 
 
 The managed Deflate path remains available without the native backend.
 
-See LICENSE.txt for Hakamiq CsoKit license terms.
+See LICENSE.txt for CsoKit license terms.

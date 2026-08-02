@@ -50,16 +50,26 @@ jobs:
           }
 
       - name: Restore
-        run: dotnet restore .\Hakamiq.CsoKit.slnx -r win-x64 -p:NuGetAudit=false
-
-      - name: Build Debug
-        run: dotnet build .\Hakamiq.CsoKit.slnx -c Debug --no-restore -p:NuGetAudit=false
-
-      - name: Test Debug
-        run: dotnet test .\Hakamiq.CsoKit.slnx -c Debug --no-build
+        run: dotnet restore .\CsoKit.slnx -r win-x64 -p:NuGetAudit=false
 
       - name: Build native backend
         run: .\scripts\Build-Native.ps1 -Configuration Release -Platform x64
+
+      - name: Build Debug
+        run: dotnet build .\CsoKit.slnx -c Debug --no-restore -p:NuGetAudit=false
+
+      - name: Stage native backend for tests
+        run: |
+          $source = ".\artifacts\native-build\win-x64\Release\CsoKit.Native.dll"
+          $destination = ".\tests\CsoKit.Tests\bin\Debug\net10.0\CsoKit.Native.dll"
+          if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+            throw "Native test DLL was not found: $source"
+          }
+          New-Item -ItemType Directory -Force (Split-Path -Parent $destination) | Out-Null
+          Copy-Item -LiteralPath $source -Destination $destination -Force
+
+      - name: Test Debug with native integration
+        run: dotnet test .\CsoKit.slnx -c Debug --no-build
 
       - name: Publish release package
         run: .\scripts\Publish-Release.ps1 -Runtime win-x64
@@ -70,6 +80,6 @@ jobs:
       - name: Upload release ZIP artifact
         uses: actions/upload-artifact@v7
         with:
-          name: hakamiq-csokit-win-x64
+          name: csokit-win-x64
           path: artifacts/release/*.zip
           if-no-files-found: error

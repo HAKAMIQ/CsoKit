@@ -1,4 +1,4 @@
-# Hakamiq.CsoKit R3-C Release Hardening
+# CsoKit R3-C Release Hardening
 
 R3-C turns the R3-B container work into a stricter intake, verify, repair, normalize, and diagnostics pass. The project remains self-contained: no release gate, test, or script depends on external comparison tools.
 
@@ -28,8 +28,8 @@ R3-C does not prove every game image, every malformed dump, or every emulator-sp
 Run the normal release gate first:
 
 ```powershell
-dotnet build Hakamiq.CsoKit.slnx --no-restore
-dotnet test Hakamiq.CsoKit.slnx --no-build --no-restore
+dotnet build CsoKit.slnx --no-restore
+dotnet test CsoKit.slnx --no-build --no-restore
 scripts/Run-ReleaseGate.ps1 -SkipRealIsoGates
 scripts/Test-RepoTextEncoding.ps1
 ```

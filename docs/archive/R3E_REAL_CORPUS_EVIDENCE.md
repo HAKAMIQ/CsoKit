@@ -1,6 +1,6 @@
-# Hakamiq.CsoKit R3-E Real Corpus Evidence and Deflate Backend Calibration
+# CsoKit R3-E Real Corpus Evidence and Deflate Backend Calibration
 
-R3-E keeps Hakamiq.CsoKit scoped to PSP CSO workflows. It does not add Zstandard, LZ4, FLAC, CHD logic, emulator settings, or external executable dependencies. CSO1 remains the safe output target and the game-safe repair/normalization path remains conservative.
+R3-E keeps CsoKit scoped to PSP CSO workflows. It does not add Zstandard, LZ4, FLAC, CHD logic, emulator settings, or external executable dependencies. CSO1 remains the safe output target and the game-safe repair/normalization path remains conservative.
 
 ## Benchmark truth corrections
 
