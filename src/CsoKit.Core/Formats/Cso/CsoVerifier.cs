@@ -179,7 +179,7 @@ public sealed class CsoVerifier
             issues.Add(new CsoVerificationIssue(
                 header.IsCsoV2 ? "CsoV2FinalSentinelHighBit" : "FinalIndexEntryHasFlag",
                 header.IsCsoV2
-                    ? "CSO v2 final sentinel index entry must not have the high-bit flag set."
+                    ? "CSO2 final sentinel index entry must not have the high-bit flag set."
                     : "Final CSO index entry must not carry the stored-block flag.",
                 entries.Count - 1)
             {
