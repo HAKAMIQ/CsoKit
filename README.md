@@ -2,150 +2,84 @@
 
 CsoKit is a Windows x64 command-line tool for PSP ISO and compressed disc images.
 
-It supports detection, inspection, verification, compression, decompression, and conservative rebuilding of readable containers.
+It supports detection, inspection, verification, compression, decompression, and safe rebuilding of supported containers.
 
-## Installation
+## Download
 
-1. Download the latest Windows x64 ZIP from:
-   https://github.com/HAKAMIQ/CsoKit/releases/latest
-2. Extract the complete ZIP into one folder.
-3. Keep `csokit.exe` and `CsoKit.Native.dll` together.
-4. No installer is required.
+Download the latest Windows x64 release:
 
-## First check
+https://github.com/HAKAMIQ/CsoKit/releases/latest
 
-    .\csokit.exe --version
-    .\csokit.exe native-info
-    .\csokit.exe --help
+Extract the complete ZIP into one folder and keep:
 
-`native-info` should report that the native backend and codecs are available.
+```text
+csokit.exe
+CsoKit.Native.dll
+```
 
-## Detect the input format
+together.
 
-    .\csokit.exe detect ".\game.iso"
-    .\csokit.exe detect ".\game.cso"
+No installer is required.
 
-## Inspect a compressed image
+## Main features
 
-    .\csokit.exe info ".\game.cso"
+- Detect ISO, CSO, ZSO, DAX, and supported CSO2 input.
+- Inspect CSO1 and supported CSO2 images.
+- Analyze PSP ISO structure.
+- Deep verification with SHA-256.
+- Compress ISO to CSO1.
+- Decompress CSO to ISO.
+- Rebuild readable images into verified CSO1 output.
+- Structured JSON output for scripts and automation.
 
-## Analyze a PSP ISO
+## Quick start
 
-    .\csokit.exe analyze ".\game.iso" --psp
+Check the installation:
 
-This checks the PSP ISO structure without changing the file.
+```powershell
+.\csokit.exe --version
+.\csokit.exe native-info
+.\csokit.exe --help
+```
 
-## Verify a compressed image
+Compress an ISO:
 
-Basic verification:
+```powershell
+.\csokit.exe compress ".\game.iso" --profile game-safe
+```
 
-    .\csokit.exe verify ".\game.cso"
+Verify a CSO:
 
-Deep verification with SHA-256:
+```powershell
+.\csokit.exe verify ".\game.cso" --deep --sha256
+```
 
-    .\csokit.exe verify ".\game.cso" --deep --sha256
+Decompress a CSO:
 
-Verification supports CSO, ZSO, and DAX where indicated by the command help.
-
-## Compress ISO to CSO
-
-Recommended:
-
-    .\csokit.exe compress ".\game.iso" --profile game-safe
-
-Choose the output file:
-
-    .\csokit.exe compress ".\game.iso" -o ".\game.cso" --profile game-safe
-
-Faster compression:
-
-    .\csokit.exe compress ".\game.iso" --profile fast
-
-Estimate size without creating a file:
-
-    .\csokit.exe compress ".\game.iso" --measure
-
-## Decompress CSO to ISO
-
-    .\csokit.exe decompress ".\game.cso" -o ".\game.iso"
-
-## Repair or normalize
-
-    .\csokit.exe repair ".\game.cso" -o ".\fixed.cso" --profile game-safe --deep-verify
-
-Repair rebuilds readable data into CSO1. It cannot recreate missing or unreadable source data.
+```powershell
+.\csokit.exe decompress ".\game.cso" -o ".\game.iso"
+```
 
 ## Compression profiles
 
-| Profile | Purpose |
-| --- | --- |
-| `game-safe` | Recommended default |
-| `compat` | Compatibility-focused |
-| `fast` | Faster compression |
-| `smallest` | More compression trials |
-| `archive-smallest` | Size-focused experimental profile |
+- `game-safe` — recommended default
+- `compat` — compatibility-focused
+- `fast` — faster compression
+- `smallest` — additional compression trials
+- `archive-smallest` — size-focused experimental profile
 
 Use `game-safe` unless you have a specific reason to choose another profile.
-
-## Output names
-
-The output base name must contain 2 to 10 Unicode characters. The extension is not counted.
-
-Valid:
-
-    game.cso
-    game-2.cso
-    back.iso
-
-Invalid:
-
-    x.cso
-    verylongname.cso
-
-## Existing files
-
-CsoKit does not overwrite an output file unless `--force` is supplied.
-
-    .\csokit.exe decompress ".\game.cso" -o ".\game.iso" --force
-
-## JSON output
-
-    .\csokit.exe verify ".\game.cso" --deep --json
-
-## Exit codes
-
-| Code | Meaning |
-| ---: | --- |
-| 0 | Success |
-| 1 | General failure |
-| 2 | Invalid command or argument |
-| 10 | Input file not found |
-| 11 | Invalid container header |
-| 12 | Unsupported container |
-| 13 | Corrupt index |
-| 14 | Output already exists |
-| 15 | Output cannot be written |
-| 16 | Insufficient disk space |
-| 20 | Decompression failed |
-| 21 | Compression failed |
-| 130 | Operation canceled |
 
 ## Safety
 
 - Keep the original image until the output is verified.
-- Use `--deep` before archiving or transferring an output.
-- Repair does not invent missing sectors or corrupted blocks.
-- Structural verification does not guarantee emulator or device compatibility.
-- Do not separate `CsoKit.Native.dll` from `csokit.exe`.
+- Existing output files are not overwritten unless `--force` is used.
+- Repair cannot recover missing or unreadable source data.
+- Structural verification does not guarantee emulator or physical-device compatibility.
+- Keep `CsoKit.Native.dll` beside `csokit.exe`.
 
-## Release ZIP contents
+## Release package
 
-    csokit.exe
-    CsoKit.Native.dll
-    README.md
-    RELEASE_NOTES.md
-    LICENSE.txt
-    THIRD_PARTY_NOTICES.md
-    SHA256SUMS.txt
+The release ZIP contains the executable, native runtime, license, notices, release notes, and SHA-256 manifest.
 
-Use `SHA256SUMS.txt` to verify that release files were not modified.
+See the latest release for downloads and version-specific changes.
