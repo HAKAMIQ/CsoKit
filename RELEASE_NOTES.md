@@ -1,20 +1,14 @@
-# CsoKit 0.6.1
+# CsoKit 0.6.2
 
-CsoKit 0.6.1 is a security, reliability, and release-quality update for Windows x64.
+CsoKit 0.6.2 is a maintenance and release-pipeline update for Windows x64.
 
 ## Main changes
 
-- Restrict production native-library loading to the application directory.
-- Validate native ABI compatibility before native codecs are used.
-- Improve cancellation for verification, compression, decompression, repair, CLI Ctrl+C, and the desktop Stop action.
-- Prevent incomplete output from replacing the final destination after cancellation or failure.
-- Apply bounded compression-worker limits and safe queue sizing.
-- Add a central Application layer shared by the CLI and desktop interface.
-- Enforce output base names containing 2 to 10 Unicode characters.
-- Improve early CLI validation and JSON failure responses.
-- Strengthen verification and repair handling for supported containers.
-- Repair the standalone published-executable smoke test and include it in the main verification gate.
-- Simplify end-user documentation and remove internal reports.
+- Strengthen release gates by validating central managed and native version wiring.
+- Build, stage, and verify the native runtime used by release tests and published outputs.
+- Remove a redundant native backend build from the GitHub release workflow while keeping the clean packaging build.
+- Clarify supported inspection formats and CSO2 verification wording.
+- Preserve existing CLI behavior, native staging, packaging, verification, and release artifacts.
 
 ## Supported workflows
 
@@ -39,7 +33,7 @@ Verify important output before deleting the original image:
 
 ## Installation
 
-1. Download csokit-0.6.1-win-x64.zip.
+1. Download csokit-0.6.2-win-x64.zip.
 2. Extract the complete archive into one folder.
 3. Keep csokit.exe beside CsoKit.Native.dll.
 4. Run:
@@ -49,13 +43,7 @@ Verify important output before deleting the original image:
 
 ## Verification
 
-- Debug build: PASS.
-- Release build: PASS.
-- Automated tests: 201/201 PASS.
-- Native integration: PASS.
-- Published executable smoke: PASS.
-- Native ISO to CSO to ISO round-trip: PASS.
-- Release package verification: PASS.
+Release verification is pending. Current results will be recorded after all release gates complete.
 
 ## Important notes
 
