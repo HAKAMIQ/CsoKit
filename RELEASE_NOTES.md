@@ -43,7 +43,15 @@ Verify important output before deleting the original image:
 
 ## Verification
 
-Release verification is pending. Current results will be recorded after all release gates complete.
+- Debug build: PASS — 0 warnings, 0 errors.
+- Release build: PASS — 0 warnings, 0 errors.
+- Automated tests: 201/201 PASS.
+- NuGet Audit: PASS.
+- Native integration: PASS.
+- Published executable smoke: PASS.
+- Release package verification: PASS.
+- SHA-256 manifest: 6/6 entries verified.
+- Real ISO corpus gate: skipped for this release validation run.
 
 ## Important notes
 
