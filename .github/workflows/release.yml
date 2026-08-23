@@ -70,9 +70,6 @@ jobs:
           Write-Host "Release version: $version"
           Write-Host "Release tag:     $tagName"
 
-      - name: Build native backend
-        run: .\scripts\Build-Native.ps1 -Configuration Release -Platform x64
-
       - name: Publish release package
         run: .\scripts\Publish-Release.ps1 -Version $env:RELEASE_VERSION -Runtime win-x64
 
