@@ -1,6 +1,7 @@
 <#
   CsoKit roundtrip audit (synthetic data only - no game files).
   Every case: ISO -> CSO -> ISO, SHA1 must match source. Any mismatch = FAIL.
+  Exits with an error if any case is FAIL (SKIP and INFO rows are not failures).
   Usage:
     .\Test-CsoRoundtrip.ps1 -Exe "C:\...\csokit.exe" [-MaxCso "C:\...\maxcso.exe"] [-IncludeLarge]
 #>
@@ -155,3 +156,8 @@ $csv = Join-Path $work 'results.csv'
 $results | Export-Csv -NoTypeInformation -Encoding UTF8 $csv
 Write-Host "Results: $csv"
 Write-Host "Work dir (synthetic files only, safe to delete): $work"
+
+$failed = @($results | Where-Object { $_.Result -eq 'FAIL' })
+if ($failed.Count -gt 0) {
+    throw "$($failed.Count) audit case(s) failed: $($failed.Case -join '; ')"
+}
