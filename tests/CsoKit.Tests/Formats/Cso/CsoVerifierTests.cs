@@ -132,6 +132,31 @@ public sealed class CsoVerifierTests
         }
     }
 
+    [Fact]
+    public void Verify_WithUncompressedSizeNearUInt64Max_ReturnsInvalidHeaderValues()
+    {
+        string path = CreateTempCsoLikeFile(
+            uncompressedSize: ulong.MaxValue - 1,
+            blockSize: 2048,
+            version: 1,
+            indexShift: 0,
+            rawEntries: [36, 100, 200],
+            dataLength: 200);
+
+        try
+        {
+            CsoVerifier verifier = new();
+            CsoVerificationResult result = verifier.Verify(path);
+
+            Assert.False(result.Success);
+            Assert.Contains(result.Issues, issue => issue.Code == "InvalidHeaderValues");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private static string CreateTempCsoLikeFile(
         ulong uncompressedSize,
         uint blockSize,

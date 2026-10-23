@@ -1,3 +1,11 @@
+## Unreleased
+
+- Decompression rejects stored blocks smaller than the block payload and CSO files whose final index offset does not match the file size.
+- Decompression inflates blocks as exact raw deflate first, with zlib as an exact-length fallback that rejects trailing data.
+- Decompression feeds each compressed block to the inflater in bulk and only steps byte by byte through the permitted alignment padding, restoring pre-validation throughput.
+- Release gate scripts disable MSBuild node reuse so stale build nodes cannot fail gate builds with access-denied errors.
+- Compression and decompression remove temporary output on unexpected errors, and verification reports overflowing header values as `InvalidHeaderValues`.
+
 # CsoKit 0.6.2
 
 CsoKit 0.6.2 is a maintenance and release-pipeline update for Windows x64.

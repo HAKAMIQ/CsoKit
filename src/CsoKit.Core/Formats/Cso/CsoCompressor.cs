@@ -204,6 +204,11 @@ public sealed class CsoCompressor
                 SafeDelete(tempOutputPath);
                 return CsoCompressResult.Fail("CompressionIoFailed", ex.Message);
             }
+            catch
+            {
+                SafeDelete(tempOutputPath);
+                throw;
+            }
         }
         catch (OperationCanceledException)
         {
