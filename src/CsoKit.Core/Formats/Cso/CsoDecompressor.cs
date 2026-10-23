@@ -142,6 +142,11 @@ public sealed class CsoDecompressor
                 SafeDelete(tempOutputPath);
                 return CsoDecompressResult.Fail("DecompressionIoFailed", ex.Message);
             }
+            catch
+            {
+                SafeDelete(tempOutputPath);
+                throw;
+            }
         }
         catch (OperationCanceledException)
         {
@@ -182,6 +187,14 @@ public sealed class CsoDecompressor
 
         ReportProgress(progress, completedBlocks: 0, totalBlocks, totalWritten, header.UncompressedSize);
 
+        ulong finalOffset = entries[^1].Offset;
+
+        if (finalOffset != (ulong)input.Length)
+        {
+            throw new InvalidDataException(
+                $"Final CSO offset does not match the input file size. Offset: {finalOffset:N0}, file size: {input.Length:N0}.");
+        }
+
         for (int blockIndex = 0; blockIndex < totalBlocks; blockIndex++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -206,6 +219,12 @@ public sealed class CsoDecompressor
 
             if (current.HasFlag)
             {
+                if (next.Offset - current.Offset < (ulong)expectedBlockBytes)
+                {
+                    throw new InvalidDataException(
+                        $"Stored CSO block {blockIndex:N0} is smaller than the expected sector payload.");
+                }
+
                 ReadExactly(input, outputBuffer.AsSpan(0, expectedBlockBytes));
                 output.Write(outputBuffer, 0, expectedBlockBytes);
             }
@@ -226,7 +245,8 @@ public sealed class CsoDecompressor
                 int decompressed = DecompressBlock(
                     compressedBuffer,
                     outputBuffer.AsSpan(0, expectedBlockBytes),
-                    blockIndex);
+                    blockIndex,
+                    header.IndexShift);
 
                 if (decompressed != expectedBlockBytes)
                 {
@@ -276,38 +296,50 @@ public sealed class CsoDecompressor
     private static int DecompressBlock(
         byte[] compressedBuffer,
         Span<byte> outputBuffer,
-        int blockIndex)
+        int blockIndex,
+        byte indexShift)
     {
-        if (TryDecompressWithZLib(compressedBuffer, outputBuffer, out int zlibBytes) &&
-            zlibBytes == outputBuffer.Length)
-        {
-            return zlibBytes;
-        }
-
-        if (TryDecompressWithDeflate(compressedBuffer, outputBuffer, out int deflateBytes) &&
-            deflateBytes == outputBuffer.Length)
+        long maximumPadding = (1L << indexShift) - 1;
+        if (TryDecompressStream(compressedBuffer, outputBuffer, false, maximumPadding, out int deflateBytes))
         {
             return deflateBytes;
         }
 
+        if (TryDecompressStream(compressedBuffer, outputBuffer, true, maximumPadding, out int zlibBytes))
+        {
+            return zlibBytes;
+        }
+
         throw new InvalidDataException(
-            $"Compressed CSO block {blockIndex:N0} could not be decompressed as zlib or raw deflate.");
+            $"Compressed CSO block {blockIndex:N0} could not be decompressed as raw deflate or zlib.");
     }
 
-    private static bool TryDecompressWithZLib(
+    private static bool TryDecompressStream(
         byte[] compressedBuffer,
         Span<byte> outputBuffer,
+        bool zlibWrapped,
+        long maximumPadding,
         out int bytesWritten)
     {
         bytesWritten = 0;
 
         try
         {
-            using MemoryStream compressedStream = new(compressedBuffer);
-            using ZLibStream zlib = new(compressedStream, CompressionMode.Decompress);
+            using BlockInflateInput compressedStream = new(compressedBuffer, maximumPadding);
+            using Stream inflater = zlibWrapped
+                ? new ZLibStream(compressedStream, CompressionMode.Decompress)
+                : new DeflateStream(compressedStream, CompressionMode.Decompress);
 
-            bytesWritten = ReadExactlyOrLess(zlib, outputBuffer);
-            return true;
+            bytesWritten = ReadExactlyOrLess(inflater, outputBuffer);
+
+            if (bytesWritten != outputBuffer.Length)
+            {
+                return false;
+            }
+
+            Span<byte> extra = stackalloc byte[1];
+            return inflater.Read(extra) == 0 &&
+                compressedStream.Length - compressedStream.Position <= maximumPadding;
         }
         catch (InvalidDataException)
         {
@@ -319,28 +351,34 @@ public sealed class CsoDecompressor
         }
     }
 
-    private static bool TryDecompressWithDeflate(
-        byte[] compressedBuffer,
-        Span<byte> outputBuffer,
-        out int bytesWritten)
+    private sealed class BlockInflateInput(byte[] bytes, long maximumPadding) : MemoryStream(bytes, writable: false)
     {
-        bytesWritten = 0;
+        // A stream ending at or before this position leaves more trailing bytes
+        // than alignment padding allows, so it is rejected without its exact end.
+        private readonly long bulkEnd = Math.Max(0, bytes.LongLength - maximumPadding - 1);
 
-        try
+        public override int Read(byte[] buffer, int offset, int count)
         {
-            using MemoryStream compressedStream = new(compressedBuffer);
-            using DeflateStream deflate = new(compressedStream, CompressionMode.Decompress);
+            return base.Read(buffer, offset, NextChunk(count));
+        }
 
-            bytesWritten = ReadExactlyOrLess(deflate, outputBuffer);
-            return true;
-        }
-        catch (InvalidDataException)
+        public override int Read(Span<byte> buffer)
         {
-            return false;
+            return base.Read(buffer[..NextChunk(buffer.Length)]);
         }
-        catch (IOException)
+
+        private int NextChunk(int requested)
         {
-            return false;
+            // DeflateStream reads ahead and can return EOF for incomplete input;
+            // an inflater requesting more input at physical EOF is truncated.
+            if (requested > 0 && Position == Length)
+                throw new InvalidDataException("Compressed block ended before its stream terminator.");
+
+            // Feed the bulk in one read, then the possible padding region one byte
+            // at a time to retain the actual stream-end position there.
+            return Position < bulkEnd
+                ? (int)Math.Min(requested, bulkEnd - Position)
+                : Math.Min(requested, 1);
         }
     }
 

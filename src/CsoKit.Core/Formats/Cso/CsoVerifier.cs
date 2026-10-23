@@ -89,6 +89,15 @@ public sealed class CsoVerifier
                 [],
                 [new CsoVerificationIssue("InputReadFailed", ex.Message)]);
         }
+        catch (OverflowException)
+        {
+            return CsoVerificationResult.Fail(
+                null,
+                [],
+                [new CsoVerificationIssue(
+                    "InvalidHeaderValues",
+                    "CSO header values overflow the supported block or index range.")]);
+        }
     }
 
     private static List<CsoVerificationIssue> ValidateIndex(

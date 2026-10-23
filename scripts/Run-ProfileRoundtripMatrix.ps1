@@ -12,6 +12,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Reused MSBuild nodes from earlier sessions can be denied write access to
+# build outputs; gate builds always start fresh nodes.
+$env:MSBUILDDISABLENODEREUSE = "1"
+
 . (Join-Path $PSScriptRoot "OutputFileNamePolicy.ps1")
 
 function Get-ResolvedFilePath {

@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using CsoKit.Core.Formats.Cso;
 using CsoKit.Core.Native;
 
@@ -32,6 +33,44 @@ public sealed class CsoCompressorTests
 
             Assert.True(decompressResult.Success, decompressResult.ErrorMessage);
             Assert.Equal(original, File.ReadAllBytes(outputIsoPath));
+        }
+        finally
+        {
+            File.Delete(isoPath);
+            File.Delete(csoPath);
+            File.Delete(outputIsoPath);
+        }
+    }
+
+    [Theory]
+    [InlineData(1000)]
+    [InlineData(2048 * 4)]
+    [InlineData((2048 * 4) + 777)]
+    public void Compress_ThenDecompress_PreservesSha1(int length)
+    {
+        byte[] original = CreateScaledModuloBytes(length, 31, 251);
+        Array.Clear(original, 0, Math.Min(length, 1024));
+
+        string isoPath = CreateTempPath(".iso");
+        string csoPath = CreateTempPath(".cso");
+        string outputIsoPath = CreateTempPath(".out.iso");
+
+        try
+        {
+            File.WriteAllBytes(isoPath, original);
+
+            CsoCompressResult compressResult = new CsoCompressor().Compress(
+                new CsoCompressOptions(isoPath, csoPath, ForceOverwrite: false));
+
+            Assert.True(compressResult.Success, compressResult.ErrorMessage);
+
+            CsoDecompressResult decompressResult = new CsoDecompressor().Decompress(
+                new CsoDecompressOptions(csoPath, outputIsoPath, ForceOverwrite: false));
+
+            Assert.True(decompressResult.Success, decompressResult.ErrorMessage);
+            Assert.Equal(
+                Convert.ToHexString(SHA1.HashData(File.ReadAllBytes(isoPath))),
+                Convert.ToHexString(SHA1.HashData(File.ReadAllBytes(outputIsoPath))));
         }
         finally
         {
