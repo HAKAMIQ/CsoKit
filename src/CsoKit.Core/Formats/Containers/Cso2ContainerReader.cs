@@ -21,17 +21,7 @@ public sealed class Cso2ContainerReader(string inputPath) : CsoLikeContainerRead
         if (current.HasFlag)
         {
             byte[] lz4Payload = ReadPayloadBytes(input, physicalSize, blockIndex, "CSO2");
-
-            if (!Lz4BlockDecoder.TryDecode(lz4Payload, output, out int bytesWritten) ||
-                bytesWritten != output.Length)
-            {
-                throw new BlockContainerReadException(
-                    "CorruptCompressedBlock",
-                    $"CSO2 LZ4 block {blockIndex} could not be decoded. Re-dump required.",
-                    blockIndex);
-            }
-
-            return bytesWritten;
+            return DecodeLz4Payload(lz4Payload, blockIndex, output, "CSO2");
         }
 
         if (physicalSize >= (ulong)output.Length)

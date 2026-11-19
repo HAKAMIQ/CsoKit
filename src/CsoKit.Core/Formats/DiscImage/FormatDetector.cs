@@ -96,7 +96,7 @@ public static class FormatDetector
 
             long? sectorCount = blockSize == 0
                 ? null
-                : checked((long)((uncompressedSize + blockSize - 1) / blockSize));
+                : CountBlocks(uncompressedSize, blockSize);
 
             return new FormatDetectionResult(
                 true,
@@ -123,7 +123,7 @@ public static class FormatDetector
                 byte indexShift = data[21];
                 long? sectorCount = blockSize == 0
                     ? null
-                    : checked((long)((uncompressedSize + blockSize - 1) / blockSize));
+                    : CountBlocks(uncompressedSize, blockSize);
 
                 return new FormatDetectionResult(
                     true,
@@ -216,6 +216,14 @@ public static class FormatDetector
         return data.Length >= Iso9660PrimaryVolumeDescriptorOffset + 6 &&
             data[Iso9660PrimaryVolumeDescriptorOffset] == 1 &&
             data.Slice(Iso9660PrimaryVolumeDescriptorOffset + 1, 5).SequenceEqual("CD001"u8);
+    }
+
+    // Ceiling division without overflow: an absurd header size must be reported
+    // as data, not crash detection.
+    private static long? CountBlocks(ulong uncompressedSize, uint blockSize)
+    {
+        ulong blocks = (uncompressedSize / blockSize) + (uncompressedSize % blockSize == 0 ? 0UL : 1UL);
+        return blocks > long.MaxValue ? null : (long)blocks;
     }
 
     private static string ReadMagic(ReadOnlySpan<byte> data)

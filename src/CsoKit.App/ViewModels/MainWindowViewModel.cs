@@ -683,6 +683,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
         {
             ".iso" => "ISO",
             ".cso" => "CSO",
+            ".zso" => "ZSO",
             ".pkg" => "PKG",
             ".chd" => "CHD",
             ".cue" => "CUE",

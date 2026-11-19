@@ -81,7 +81,7 @@ public static class CsoCommandDispatcher
         Console.WriteLine("  csokit info <input.cso> [--json]");
         Console.WriteLine("  csokit verify <input.cso|input.zso|input.dax> [--deep] [--sha256] [--json]");
         Console.WriteLine("  csokit repair <input.iso|input.cso> -o <output.cso> [--profile game-safe] [--repair pad-last-sector] [--deep-verify] [--codec-report] [--codec-report-block-limit <n>] [--force] [--json]");
-        Console.WriteLine("  csokit decompress <input.cso> [-o <output.iso>] [--force] [--quiet] [--json]");
+        Console.WriteLine("  csokit decompress <input.cso|input.zso> [-o <output.iso>] [--force] [--quiet] [--json]");
         Console.WriteLine($"  csokit compress <input.iso> [-o <output.cso>] [--profile <{CsoCompressionProfilePolicy.SupportedNamesText}>] [--fast] [--threads <n>] [--block <bytes>] [--zopfli] [--deep-verify] [--codec-report] [--codec-report-block-limit <n>] [--force] [--quiet] [--json]");
         Console.WriteLine($"  csokit compress <input.iso> --measure [--profile <{CsoCompressionProfilePolicy.SupportedNamesText}>] [--fast] [--block <bytes>] [--zopfli] [--quiet] [--json]");
         Console.WriteLine("  csokit codecs");
@@ -93,7 +93,7 @@ public static class CsoCommandDispatcher
         Console.WriteLine("  info         Read and print CSO header information.");
         Console.WriteLine("  verify       Validate CSO header/index, or every block with --deep.");
         Console.WriteLine("  repair       Rebuild readable ISO/CSO/ZSO/DAX input into game-safe CSO1.");
-        Console.WriteLine("  decompress   Decompress CSO to ISO.");
+        Console.WriteLine("  decompress   Decompress CSO or ZSO to ISO.");
         Console.WriteLine("  compress     Compress ISO to CSO.");
         Console.WriteLine("  codecs       Show codec matrix and native availability.");
         Console.WriteLine("  native-info  Show native backend availability.");

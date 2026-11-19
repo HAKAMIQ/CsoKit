@@ -8,7 +8,8 @@ public sealed class UiTaskItemTests
     [InlineData("game.iso", "ISO")]
     [InlineData("game.CSO", "CSO")]
     [InlineData("game.chd", "CHD")]
-    [InlineData("game.zso", "Other")]
+    [InlineData("game.zso", "ZSO")]
+    [InlineData("game.dax", "Other")]
     [InlineData("game", "Unknown")]
     public void Create_ClassifiesMediaKindByExtension(string fileName, string expectedKind)
     {

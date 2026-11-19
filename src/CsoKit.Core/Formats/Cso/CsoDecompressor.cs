@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using CsoKit.Core.Formats.Containers;
 
 namespace CsoKit.Core.Formats.Cso;
 
@@ -39,6 +40,11 @@ public sealed class CsoDecompressor
             }
 
             cancellationToken.ThrowIfCancellationRequested();
+
+            if (HasZsoMagic(options.InputPath))
+            {
+                return DecompressZso(options);
+            }
 
             CsoVerificationResult verification = verifier.Verify(options.InputPath);
 
@@ -82,75 +88,178 @@ public sealed class CsoDecompressor
                     diskSpace.ErrorMessage ?? "Disk space preflight failed.");
             }
 
-            string fullOutputPath = Path.GetFullPath(options.OutputPath);
-            string tempOutputPath = CreateUniqueTempOutputPath(fullOutputPath);
-
-            try
+            return WriteThroughTempFile(options, output =>
             {
-                ulong bytesWritten;
-
-                using (FileStream input = new(
+                using FileStream input = new(
                     options.InputPath,
                     FileMode.Open,
                     FileAccess.Read,
                     FileShare.Read,
                     bufferSize: 1024 * 128,
-                    FileOptions.SequentialScan))
-                {
-                    using FileStream output = new(
-                        tempOutputPath,
-                        FileMode.CreateNew,
-                        FileAccess.Write,
-                        FileShare.None,
-                        bufferSize: 1024 * 128,
-                        FileOptions.SequentialScan);
+                    FileOptions.SequentialScan);
 
-                    bytesWritten = DecompressBlocks(
-                        input,
-                        output,
-                        header,
-                        verification.Entries,
-                        cancellationToken,
-                        options.Progress);
-
-                    output.Flush(true);
-                }
-
-                cancellationToken.ThrowIfCancellationRequested();
-
-                File.Move(tempOutputPath, fullOutputPath, overwrite: options.ForceOverwrite);
-
-                return CsoDecompressResult.Ok(bytesWritten);
-            }
-            catch (OperationCanceledException)
-            {
-                SafeDelete(tempOutputPath);
-                return CsoDecompressResult.Fail("OperationCanceled", "Operation was canceled.");
-            }
-            catch (InvalidDataException ex)
-            {
-                SafeDelete(tempOutputPath);
-                return CsoDecompressResult.Fail("InvalidCompressedData", ex.Message);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                SafeDelete(tempOutputPath);
-                return CsoDecompressResult.Fail("OutputAccessDenied", ex.Message);
-            }
-            catch (IOException ex)
-            {
-                SafeDelete(tempOutputPath);
-                return CsoDecompressResult.Fail("DecompressionIoFailed", ex.Message);
-            }
-            catch
-            {
-                SafeDelete(tempOutputPath);
-                throw;
-            }
+                return DecompressBlocks(
+                    input,
+                    output,
+                    header,
+                    verification.Entries,
+                    cancellationToken,
+                    options.Progress);
+            });
         }
         catch (OperationCanceledException)
         {
             return CsoDecompressResult.Fail("OperationCanceled", "Operation was canceled.");
+        }
+    }
+
+    private static bool HasZsoMagic(string inputPath)
+    {
+        try
+        {
+            using FileStream input = File.OpenRead(inputPath);
+            Span<byte> magic = stackalloc byte[4];
+            return input.Read(magic) == magic.Length && magic.SequenceEqual("ZISO"u8);
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    private CsoDecompressResult DecompressZso(CsoDecompressOptions options)
+    {
+        ZsoContainerReader reader;
+
+        try
+        {
+            reader = new ZsoContainerReader(options.InputPath);
+        }
+        catch (BlockContainerReadException ex)
+        {
+            return CsoDecompressResult.Fail(ex.Code, ex.Message);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return CsoDecompressResult.Fail("InputAccessDenied", ex.Message);
+        }
+        catch (IOException ex)
+        {
+            return CsoDecompressResult.Fail("InputReadFailed", ex.Message);
+        }
+
+        using (reader)
+        {
+            long inputLength = new FileInfo(options.InputPath).Length;
+
+            // Like CSO decompression, reject bytes after the last block's data.
+            if (reader.HasTrailingData)
+            {
+                return CsoDecompressResult.Fail(
+                    "InvalidCompressedData",
+                    $"Final ZSO offset does not match the input file size. Offset: {reader.DataEndOffset:N0}, file size: {inputLength:N0}.");
+            }
+
+            CsoDiskSpacePreflightResult diskSpace = diskSpacePreflight.CheckOutputSpace(
+                options.OutputPath,
+                AddSafetyBuffer(reader.UncompressedSize));
+
+            if (!diskSpace.Success)
+            {
+                return CsoDecompressResult.Fail(
+                    diskSpace.ErrorCode ?? "DiskSpacePreflightFailed",
+                    diskSpace.ErrorMessage ?? "Disk space preflight failed.");
+            }
+
+            int totalBlocks = reader.BlockCount;
+            ulong totalBytes = reader.UncompressedSize;
+
+            return WriteThroughTempFile(options, output =>
+            {
+                ReportProgress(options.Progress, completedBlocks: 0, totalBlocks, bytesWritten: 0, totalBytes);
+
+                return ContainerIsoDecoder.Decode(
+                    reader,
+                    output,
+                    options.CancellationToken,
+                    (completedBlocks, bytesWritten) =>
+                    {
+                        if (completedBlocks == totalBlocks ||
+                            completedBlocks % ProgressReportBlockInterval == 0)
+                        {
+                            ReportProgress(options.Progress, completedBlocks, totalBlocks, bytesWritten, totalBytes);
+                        }
+                    });
+            });
+        }
+    }
+
+    /// <summary>
+    /// Writes the ISO to a hidden temporary file beside the output, then moves it into
+    /// place, so a failed or canceled run never leaves a partial ISO behind.
+    /// </summary>
+    private static CsoDecompressResult WriteThroughTempFile(
+        CsoDecompressOptions options,
+        Func<FileStream, ulong> writeOutput)
+    {
+        string fullOutputPath = Path.GetFullPath(options.OutputPath);
+        string tempOutputPath = CreateUniqueTempOutputPath(fullOutputPath);
+
+        try
+        {
+            ulong bytesWritten;
+
+            using (FileStream output = new(
+                tempOutputPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 1024 * 128,
+                FileOptions.SequentialScan))
+            {
+                bytesWritten = writeOutput(output);
+                output.Flush(true);
+            }
+
+            options.CancellationToken.ThrowIfCancellationRequested();
+
+            File.Move(tempOutputPath, fullOutputPath, overwrite: options.ForceOverwrite);
+
+            return CsoDecompressResult.Ok(bytesWritten);
+        }
+        catch (OperationCanceledException)
+        {
+            SafeDelete(tempOutputPath);
+            return CsoDecompressResult.Fail("OperationCanceled", "Operation was canceled.");
+        }
+        catch (InvalidDataException ex)
+        {
+            SafeDelete(tempOutputPath);
+            return CsoDecompressResult.Fail("InvalidCompressedData", ex.Message);
+        }
+        catch (BlockContainerReadException ex)
+        {
+            SafeDelete(tempOutputPath);
+            return CsoDecompressResult.Fail(ex.Code, ex.Message);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            SafeDelete(tempOutputPath);
+            return CsoDecompressResult.Fail("OutputAccessDenied", ex.Message);
+        }
+        catch (IOException ex)
+        {
+            SafeDelete(tempOutputPath);
+            return CsoDecompressResult.Fail("DecompressionIoFailed", ex.Message);
+        }
+        catch
+        {
+            SafeDelete(tempOutputPath);
+            throw;
         }
     }
 

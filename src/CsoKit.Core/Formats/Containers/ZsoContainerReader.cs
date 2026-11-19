@@ -11,6 +11,8 @@ public sealed class ZsoContainerReader(string inputPath) : CsoLikeContainerReade
 {
     public override DetectedDiscFormat Format => DetectedDiscFormat.Zso;
 
+    protected override bool FinalBlockMayEndPastSentinel => true;
+
     protected override int ReadPayload(
         FileStream input,
         CsoIndexEntry current,
@@ -24,16 +26,6 @@ public sealed class ZsoContainerReader(string inputPath) : CsoLikeContainerReade
         }
 
         byte[] payload = ReadPayloadBytes(input, physicalSize, blockIndex, "ZSO");
-
-        if (!Lz4BlockDecoder.TryDecode(payload, output, out int bytesWritten) ||
-            bytesWritten != output.Length)
-        {
-            throw new BlockContainerReadException(
-                "CorruptCompressedBlock",
-                $"ZSO LZ4 block {blockIndex} could not be decoded. Re-dump required.",
-                blockIndex);
-        }
-
-        return bytesWritten;
+        return DecodeLz4Payload(payload, blockIndex, output, "ZSO");
     }
 }

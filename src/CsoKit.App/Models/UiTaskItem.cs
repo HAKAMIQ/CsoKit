@@ -70,6 +70,7 @@ public sealed class UiTaskItem(string path, string displayName, string mediaKind
         {
             ".iso" => "ISO",
             ".cso" => "CSO",
+            ".zso" => "ZSO",
             ".pkg" => "PKG",
             ".chd" => "CHD",
             ".cue" => "CUE",

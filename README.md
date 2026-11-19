@@ -65,9 +65,12 @@ Estimate size without creating a file:
 
     .\csokit.exe compress ".\game.iso" --measure
 
-## Decompress CSO to ISO
+## Decompress CSO or ZSO to ISO
 
     .\csokit.exe decompress ".\game.cso" -o ".\game.iso"
+    .\csokit.exe decompress ".\game.zso" -o ".\game.iso"
+
+ZSO input is read in the layouts written by maxcso and ziso.py, including index-aligned images larger than 2 GB.
 
 ## Repair or normalize
 

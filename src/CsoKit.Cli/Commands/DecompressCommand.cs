@@ -39,8 +39,8 @@ public static class DecompressCommand
 
             if (!options.Quiet && !options.Json)
             {
-                Console.WriteLine("CSO Decompression");
-                Console.WriteLine("-----------------");
+                Console.WriteLine("Decompression");
+                Console.WriteLine("-------------");
                 Console.WriteLine($"Input:  {SafeFullPath(options.InputPath)}");
                 Console.WriteLine($"Output: {SafeFullPath(outputPath)}");
 
@@ -253,7 +253,7 @@ public static class DecompressCommand
 
     private static void PrintUsage()
     {
-        Console.Error.WriteLine("Usage: csokit decompress <input.cso> [-o <output.iso>] [--force] [--quiet] [--json]");
+        Console.Error.WriteLine("Usage: csokit decompress <input.cso|input.zso> [-o <output.iso>] [--force] [--quiet] [--json]");
     }
 
     private sealed record DecompressCommandOptions(

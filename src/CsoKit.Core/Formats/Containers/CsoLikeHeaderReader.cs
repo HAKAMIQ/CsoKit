@@ -56,8 +56,20 @@ internal static class CsoLikeHeaderReader
         }
 
         CsoHeader header = new(headerSize, uncompressedSize, blockSize, version, indexShift);
+        long indexEntryCount;
 
-        if (header.IndexEntryCount > int.MaxValue)
+        try
+        {
+            indexEntryCount = header.IndexEntryCount;
+        }
+        catch (OverflowException)
+        {
+            throw new BlockContainerReadException(
+                "InvalidHeaderValues",
+                $"{formatName} header values overflow the supported block or index range.");
+        }
+
+        if (indexEntryCount > int.MaxValue)
         {
             throw new BlockContainerReadException(
                 "TooManyIndexEntries",
