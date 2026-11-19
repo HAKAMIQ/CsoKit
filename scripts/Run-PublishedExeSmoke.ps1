@@ -470,7 +470,7 @@ if (-not $SkipRealIsoGates) {
         Write-Host "Published EXE profile roundtrip result"
         Write-Host "--------------------------------------"
         $results |
-            Select-Object Profile, CsoBytes, @{ Name = "Ratio"; Expression = { "{0:P2}" -f $_.Ratio } }, IsoBytes, Status |
+            Select-Object Profile, CsoBytes, @{ Name = "Ratio"; Expression = { ([double]$_.Ratio * 100).ToString("N2", [System.Globalization.CultureInfo]::InvariantCulture) + "%" } }, IsoBytes, Status |
             Format-Table -AutoSize
 
         if (-not $KeepArtifacts) {

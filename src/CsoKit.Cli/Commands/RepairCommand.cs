@@ -52,6 +52,11 @@ public static class RepairCommand
 
         Console.CancelKeyPress += OnCancelKeyPress;
 
+        if (!options.Json)
+        {
+            NativeBackendWarning.WriteIfUnavailable();
+        }
+
         CsoOperationResult operation;
 
         try

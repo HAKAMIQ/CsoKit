@@ -68,6 +68,7 @@ public static class CompressCommand
             Console.WriteLine("-----------");
             Console.WriteLine($"Input: {SafeFullPath(options.InputPath)}");
             Console.WriteLine("Mode:  measure only; no output file will be written.");
+            NativeBackendWarning.WriteIfUnavailable();
         }
 
         ConsoleCompressProgress? progress = options.Quiet || options.Json
@@ -159,6 +160,8 @@ public static class CompressCommand
             {
                 Console.WriteLine("Output mode: same folder; auto-named without overwriting existing files.");
             }
+
+            NativeBackendWarning.WriteIfUnavailable();
         }
 
         ConsoleCompressProgress? progress = options.Quiet || options.Json

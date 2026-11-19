@@ -194,7 +194,7 @@ try {
         $Results.Add([pscustomobject]@{
             Profile = $profile
             CsoBytes = $csoSize
-            Ratio = ("{0:N2}%" -f ($ratio * 100))
+            Ratio = ($ratio * 100).ToString("N2", [System.Globalization.CultureInfo]::InvariantCulture) + "%"
             IsoBytes = $restoredSize
             Status = "PASS"
         }) | Out-Null

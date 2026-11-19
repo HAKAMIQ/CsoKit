@@ -54,6 +54,19 @@ jobs:
       - name: Restore
         run: dotnet restore .\CsoKit.slnx -r win-x64 -p:NuGetAudit=false
 
+      # Local release gates skip NuGet Audit because the feed often times out;
+      # CI checks for vulnerable packages instead.
+      - name: Check for vulnerable packages
+        run: |
+          $report = dotnet list .\CsoKit.slnx package --vulnerable --include-transitive 2>&1 | Out-String
+          Write-Host $report
+          if ($LASTEXITCODE -ne 0) {
+            throw "Vulnerable package check failed with exit code $LASTEXITCODE."
+          }
+          if ($report -match "has the following vulnerable packages") {
+            throw "Vulnerable NuGet packages were found."
+          }
+
       - name: Build native backend
         run: .\scripts\Build-Native.ps1 -Configuration Release -Platform x64
 
