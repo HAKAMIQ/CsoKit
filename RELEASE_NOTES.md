@@ -43,7 +43,18 @@ Verify important output before deleting the original image:
 
 ## Verification
 
-- Final release gate: pending; results will be recorded after it runs for 0.6.3.
+Final release gate run against the `v0.6.3` tag on 2026-11-19 with a real 364 MB PSP ISO:
+
+- Debug build: PASS — 0 warnings, 0 errors.
+- Release build: PASS — 0 warnings, 0 errors.
+- Automated tests: 225/225 PASS.
+- Native integration: PASS — native version 0.6.3 ABI 2 with zlib, libdeflate, Zopfli, and LZ4 decode available.
+- Published executable smoke: PASS.
+- Published native compress/decompress round trip: PASS.
+- Release package verification: PASS.
+- SHA-256 manifest: 6 entries.
+- NuGet Audit: not run; the gate restores with auditing disabled.
+- Real ISO round trip: PASS — restored ISO SHA-256 matched the original for game-safe, compat, fast, and smallest, through both the build output and the published executable. Published CSO size was 57.6%–57.9% of the ISO.
 
 ## Important notes
 

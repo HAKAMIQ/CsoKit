@@ -130,6 +130,12 @@ CsoKit does not overwrite an output file unless `--force` is supplied.
 | 21 | Compression failed |
 | 130 | Operation canceled |
 
+## Desktop app (preview)
+
+The source tree also contains `CsoKit.App`, a Windows desktop interface with Arabic and English text. It runs the same operations as the CLI and writes a plain-text report beside the output after each operation.
+
+The desktop app is not included in the release ZIP. It is built from source by `scripts\Run-OfficialReleaseGate.ps1`, which produces `artifacts\release\csokit-<version>-app-win-x64.zip`. Keep `CsoKit.App.exe` and `CsoKit.Native.dll` together, as with the CLI.
+
 ## Safety
 
 - Keep the original image until the output is verified.
