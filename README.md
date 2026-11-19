@@ -24,6 +24,8 @@ The release page also lists the ZIP's own SHA-256.
 
 `native-info` should report that the native backend and codecs are available.
 
+Step-by-step guide in English and Arabic: **[CsoKit Wiki](https://github.com/HAKAMIQ/CsoKit/wiki)**.
+
 ## Supported formats
 
 | Operation | ISO | CSO1 | CSO2 | ZSO | DAX |

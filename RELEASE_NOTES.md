@@ -1,3 +1,14 @@
+# CsoKit 0.6.5
+
+## What's new
+
+- Numbers print the same on every Windows region. On Arabic Windows, ratios no longer show as `??`.
+- `compress`, `--measure`, and `repair` warn when `CsoKit.Native.dll` is missing instead of silently making larger files.
+
+## How to update
+
+Extract the new ZIP over the old folder. Keep `csokit.exe` and `CsoKit.Native.dll` together.
+
 # CsoKit 0.6.4
 
 ## What's new
