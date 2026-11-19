@@ -45,6 +45,33 @@ public abstract class CsoLikeContainerReader : IBlockContainerReader
 
     public int BlockCount => checked((int)header.SectorCount);
 
+    /// <summary>File offset where the last block's data ends.</summary>
+    public ulong DataEndOffset
+    {
+        get
+        {
+            ulong sentinel = entries[^1].Offset;
+            ulong fileLength = (ulong)input.Length;
+            ulong alignment = 1UL << header.IndexShift;
+
+            return FinalBlockMayEndPastSentinel &&
+                fileLength > sentinel &&
+                fileLength - sentinel < alignment
+                    ? fileLength
+                    : sentinel;
+        }
+    }
+
+    /// <summary>True when the file holds bytes after the last block's data.</summary>
+    public bool HasTrailingData => DataEndOffset != (ulong)input.Length;
+
+    /// <summary>
+    /// Writers that store the final sentinel as <c>end &gt;&gt; index_shift</c> without padding
+    /// first (ziso.py) round the end down, so the last block runs up to
+    /// <c>(1 &lt;&lt; index_shift) - 1</c> bytes past the sentinel, to end of file.
+    /// </summary>
+    protected virtual bool FinalBlockMayEndPastSentinel => false;
+
     protected CsoHeader Header => header;
 
     public int ReadBlock(int blockIndex, Span<byte> output)
@@ -64,9 +91,11 @@ public abstract class CsoLikeContainerReader : IBlockContainerReader
         }
 
         CsoIndexEntry current = entries[blockIndex];
-        CsoIndexEntry next = entries[blockIndex + 1];
+        ulong nextOffset = blockIndex + 1 == BlockCount
+            ? DataEndOffset
+            : entries[blockIndex + 1].Offset;
 
-        if (next.Offset < current.Offset)
+        if (nextOffset < current.Offset)
         {
             throw new BlockContainerReadException(
                 "IndexOffsetsNotMonotonic",
@@ -74,10 +103,10 @@ public abstract class CsoLikeContainerReader : IBlockContainerReader
                 blockIndex);
         }
 
-        ulong physicalSize = next.Offset - current.Offset;
+        ulong physicalSize = nextOffset - current.Offset;
 
         if (current.Offset > (ulong)input.Length ||
-            next.Offset > (ulong)input.Length)
+            nextOffset > (ulong)input.Length)
         {
             throw new BlockContainerReadException(
                 "IndexOffsetPastEndOfFile",
@@ -153,6 +182,44 @@ public abstract class CsoLikeContainerReader : IBlockContainerReader
 
         ReadExactly(input, output);
         return output.Length;
+    }
+
+    /// <summary>
+    /// Decodes a raw LZ4 block payload into <paramref name="output"/>, which holds the
+    /// logical bytes of the block. Accepts index-alignment padding of any byte value and
+    /// a final partial block that the writer zero-filled and compressed as a full block
+    /// (maxcso does this whenever the block size is larger than one sector).
+    /// </summary>
+    protected int DecodeLz4Payload(
+        ReadOnlySpan<byte> payload,
+        int blockIndex,
+        Span<byte> output,
+        string formatName)
+    {
+        int maxPadding = (int)Math.Min(int.MaxValue, (1L << header.IndexShift) - 1);
+
+        if (Lz4BlockDecoder.TryDecode(payload, output, out int bytesWritten, maxPadding) &&
+            bytesWritten == output.Length)
+        {
+            return bytesWritten;
+        }
+
+        if (output.Length < header.BlockSize)
+        {
+            byte[] fullBlock = new byte[header.BlockSize];
+
+            if (Lz4BlockDecoder.TryDecode(payload, fullBlock, out int fullBytes, maxPadding) &&
+                fullBytes == fullBlock.Length)
+            {
+                fullBlock.AsSpan(0, output.Length).CopyTo(output);
+                return output.Length;
+            }
+        }
+
+        throw new BlockContainerReadException(
+            "CorruptCompressedBlock",
+            $"{formatName} LZ4 block {blockIndex} could not be decoded. Re-dump required.",
+            blockIndex);
     }
 
     protected static int InflateRawDeflate(

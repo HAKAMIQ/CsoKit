@@ -621,9 +621,6 @@ public static class CsoRepairer
         string outputIsoPath,
         CancellationToken cancellationToken)
     {
-        byte[] buffer = new byte[checked((int)reader.BlockSize)];
-        ulong totalWritten = 0;
-
         using FileStream output = new(
             outputIsoPath,
             FileMode.CreateNew,
@@ -632,31 +629,7 @@ public static class CsoRepairer
             bufferSize: CopyBufferSize,
             FileOptions.SequentialScan);
 
-        for (int blockIndex = 0; blockIndex < reader.BlockCount; blockIndex++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            int bytesRead = reader.ReadBlock(blockIndex, buffer);
-
-            if (bytesRead <= 0)
-            {
-                throw new BlockContainerReadException(
-                    "CorruptCompressedBlock",
-                    $"{reader.Format} block {blockIndex} decoded to an empty payload. Re-dump required.",
-                    blockIndex);
-            }
-
-            output.Write(buffer.AsSpan(0, bytesRead));
-            totalWritten += (ulong)bytesRead;
-        }
-
-        if (totalWritten != reader.UncompressedSize)
-        {
-            throw new BlockContainerReadException(
-                "RepairNotPossible",
-                $"{reader.Format} decoded size mismatch. Written {totalWritten:N0} bytes, expected {reader.UncompressedSize:N0} bytes.");
-        }
-
+        ContainerIsoDecoder.Decode(reader, output, cancellationToken);
         output.Flush(true);
     }
 
@@ -672,6 +645,7 @@ public static class CsoRepairer
                 "StoredBlockTooSmall" or
                 "InvalidCompressedBlockSize" or
                 "IndexOffsetsNotMonotonic" => "ReDumpRequired",
+            "ReconstructedSizeMismatch" => "RepairNotPossible",
             _ => exception.Code,
         };
     }

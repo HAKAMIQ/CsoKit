@@ -2,10 +2,20 @@ namespace CsoKit.Core.Formats.Containers;
 
 internal static class Lz4BlockDecoder
 {
+    /// <summary>
+    /// Decodes one raw LZ4 block (no frame header, no size prefix) into exactly
+    /// <paramref name="output"/>.Length bytes.
+    /// </summary>
+    /// <param name="maxTrailingBytes">
+    /// Bytes of any value allowed after the LZ4 sequences. Index-aligned containers
+    /// pad each block up to <c>(1 &lt;&lt; index_shift) - 1</c> bytes, and writers differ on the
+    /// pad byte (maxcso writes zeros, ziso.py writes 'X'). Trailing zeros are always allowed.
+    /// </param>
     public static bool TryDecode(
         ReadOnlySpan<byte> input,
         Span<byte> output,
-        out int bytesWritten)
+        out int bytesWritten,
+        int maxTrailingBytes = 0)
     {
         bytesWritten = 0;
         int inputOffset = 0;
@@ -36,7 +46,7 @@ internal static class Lz4BlockDecoder
 
                 if (inputOffset == input.Length || bytesWritten == output.Length)
                 {
-                    bool success = bytesWritten == output.Length && HasOnlyZeroPadding(input[inputOffset..]);
+                    bool success = bytesWritten == output.Length && IsAllowedTrailer(input[inputOffset..], maxTrailingBytes);
 
                     if (!success)
                     {
@@ -86,7 +96,7 @@ internal static class Lz4BlockDecoder
                 }
             }
 
-            bool decoded = bytesWritten == output.Length && HasOnlyZeroPadding(input[inputOffset..]);
+            bool decoded = bytesWritten == output.Length && IsAllowedTrailer(input[inputOffset..], maxTrailingBytes);
 
             if (!decoded)
             {
@@ -132,16 +142,8 @@ internal static class Lz4BlockDecoder
         return false;
     }
 
-    private static bool HasOnlyZeroPadding(ReadOnlySpan<byte> input)
+    private static bool IsAllowedTrailer(ReadOnlySpan<byte> trailer, int maxTrailingBytes)
     {
-        foreach (byte value in input)
-        {
-            if (value != 0)
-            {
-                return false;
-            }
-        }
-
-        return true;
+        return trailer.Length <= maxTrailingBytes || !trailer.ContainsAnyExcept((byte)0);
     }
 }
