@@ -41,9 +41,9 @@ public sealed class CsoDecompressor
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (HasZsoMagic(options.InputPath))
+            if (TryGetContainerReader(options.InputPath, out Func<IBlockContainerReader>? openContainer, out string? containerName))
             {
-                return DecompressZso(options);
+                return DecompressContainer(options, openContainer, containerName);
             }
 
             CsoVerificationResult verification = verifier.Verify(options.InputPath);
@@ -113,13 +113,24 @@ public sealed class CsoDecompressor
         }
     }
 
-    private static bool HasZsoMagic(string inputPath)
+    /// <summary>
+    /// Selects the container reader for ZSO, CSO2, and DAX input from the file signature.
+    /// CSO1 keeps its dedicated streaming path and returns false.
+    /// </summary>
+    private static bool TryGetContainerReader(
+        string inputPath,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Func<IBlockContainerReader>? open,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? formatName)
     {
+        open = null;
+        formatName = null;
+        Span<byte> header = stackalloc byte[CsoConstants.MinimumHeaderSize];
+        int read;
+
         try
         {
             using FileStream input = File.OpenRead(inputPath);
-            Span<byte> magic = stackalloc byte[4];
-            return input.Read(magic) == magic.Length && magic.SequenceEqual("ZISO"u8);
+            read = input.ReadAtLeast(header, header.Length, throwOnEndOfStream: false);
         }
         catch (IOException)
         {
@@ -129,15 +140,33 @@ public sealed class CsoDecompressor
         {
             return false;
         }
+
+        if (read >= 4 && header[..4].SequenceEqual("ZISO"u8))
+        {
+            (open, formatName) = (() => new ZsoContainerReader(inputPath), "ZSO");
+        }
+        else if (read > 20 && header[..4].SequenceEqual(CsoConstants.MagicBytes) && header[20] == 2)
+        {
+            (open, formatName) = (() => new Cso2ContainerReader(inputPath), "CSO2");
+        }
+        else if (read >= 3 && header[..3].SequenceEqual("DAX"u8))
+        {
+            (open, formatName) = (() => new DaxContainerReader(inputPath), "DAX");
+        }
+
+        return open is not null;
     }
 
-    private CsoDecompressResult DecompressZso(CsoDecompressOptions options)
+    private CsoDecompressResult DecompressContainer(
+        CsoDecompressOptions options,
+        Func<IBlockContainerReader> openContainer,
+        string formatName)
     {
-        ZsoContainerReader reader;
+        IBlockContainerReader reader;
 
         try
         {
-            reader = new ZsoContainerReader(options.InputPath);
+            reader = openContainer();
         }
         catch (BlockContainerReadException ex)
         {
@@ -156,12 +185,13 @@ public sealed class CsoDecompressor
         {
             long inputLength = new FileInfo(options.InputPath).Length;
 
-            // Like CSO decompression, reject bytes after the last block's data.
-            if (reader.HasTrailingData)
+            // Like CSO1 decompression, reject bytes after the last block's data.
+            // DAX stores per-block offsets and sizes without an end sentinel.
+            if (reader is CsoLikeContainerReader csoLike && csoLike.HasTrailingData)
             {
                 return CsoDecompressResult.Fail(
                     "InvalidCompressedData",
-                    $"Final ZSO offset does not match the input file size. Offset: {reader.DataEndOffset:N0}, file size: {inputLength:N0}.");
+                    $"Final {formatName} offset does not match the input file size. Offset: {csoLike.DataEndOffset:N0}, file size: {inputLength:N0}.");
             }
 
             CsoDiskSpacePreflightResult diskSpace = diskSpacePreflight.CheckOutputSpace(
@@ -355,7 +385,8 @@ public sealed class CsoDecompressor
                     compressedBuffer,
                     outputBuffer.AsSpan(0, expectedBlockBytes),
                     blockIndex,
-                    header.IndexShift);
+                    header.IndexShift,
+                    blockSize);
 
                 if (decompressed != expectedBlockBytes)
                 {
@@ -406,7 +437,8 @@ public sealed class CsoDecompressor
         byte[] compressedBuffer,
         Span<byte> outputBuffer,
         int blockIndex,
-        byte indexShift)
+        byte indexShift,
+        int fullBlockSize)
     {
         long maximumPadding = (1L << indexShift) - 1;
         if (TryDecompressStream(compressedBuffer, outputBuffer, false, maximumPadding, out int deflateBytes))
@@ -417,6 +449,20 @@ public sealed class CsoDecompressor
         if (TryDecompressStream(compressedBuffer, outputBuffer, true, maximumPadding, out int zlibBytes))
         {
             return zlibBytes;
+        }
+
+        // A final partial block may be zero-filled and compressed as a full block
+        // (maxcso does this for blocks larger than one sector); keep the logical bytes.
+        if (outputBuffer.Length < fullBlockSize)
+        {
+            byte[] fullBlock = new byte[fullBlockSize];
+
+            if (TryDecompressStream(compressedBuffer, fullBlock, false, maximumPadding, out _) ||
+                TryDecompressStream(compressedBuffer, fullBlock, true, maximumPadding, out _))
+            {
+                fullBlock.AsSpan(0, outputBuffer.Length).CopyTo(outputBuffer);
+                return outputBuffer.Length;
+            }
         }
 
         throw new InvalidDataException(

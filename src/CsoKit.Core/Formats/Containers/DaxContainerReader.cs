@@ -186,9 +186,15 @@ public sealed class DaxContainerReader : IBlockContainerReader
         {
             using MemoryStream compressedStream = new(compressed, writable: false);
             using ZLibStream zlib = new(compressedStream, CompressionMode.Decompress);
-            int read = ReadExactlyOrLess(zlib, output[..expectedBytes]);
 
-            if (read != expectedBytes)
+            // A final partial block may be zero-filled and compressed as a full block
+            // (maxcso does this); decode up to a full block and keep the logical bytes.
+            int capacity = Math.Max(expectedBytes, checked((int)BlockSize));
+            byte[]? fullBlock = capacity > expectedBytes ? new byte[capacity] : null;
+            Span<byte> decoded = fullBlock is null ? output[..expectedBytes] : fullBlock;
+            int read = ReadExactlyOrLess(zlib, decoded);
+
+            if (read != expectedBytes && read != capacity)
             {
                 throw new BlockContainerReadException(
                     "CorruptCompressedBlock",
@@ -206,7 +212,12 @@ public sealed class DaxContainerReader : IBlockContainerReader
                     blockIndex);
             }
 
-            return read;
+            if (fullBlock is not null)
+            {
+                fullBlock.AsSpan(0, expectedBytes).CopyTo(output);
+            }
+
+            return expectedBytes;
         }
         catch (InvalidDataException ex)
         {
