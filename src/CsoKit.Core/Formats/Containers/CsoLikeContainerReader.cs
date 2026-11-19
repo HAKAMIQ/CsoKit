@@ -222,13 +222,13 @@ public abstract class CsoLikeContainerReader : IBlockContainerReader
             blockIndex);
     }
 
-    protected static int InflateRawDeflate(
+    protected int InflateRawDeflate(
         ReadOnlySpan<byte> payload,
         int blockIndex,
         Span<byte> output,
         string formatName)
     {
-        if (!RawDeflateVerifier.TryInflate(payload, output, out int bytesWritten) ||
+        if (!RawDeflateVerifier.TryInflateBlock(payload, output, checked((int)header.BlockSize), out int bytesWritten) ||
             bytesWritten != output.Length)
         {
             throw new BlockContainerReadException(

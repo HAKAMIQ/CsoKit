@@ -318,7 +318,7 @@ public sealed class CsoDeepVerifier
                     compressedBuffer = EnsureRentedCapacity(compressedBuffer, compressedLength);
                     ReadExactly(input, compressedBuffer.AsSpan(0, compressedLength));
 
-                    if (!RawDeflateVerifier.TryInflate(compressedBuffer.AsSpan(0, compressedLength), output, out int bytesWritten) ||
+                    if (!RawDeflateVerifier.TryInflateBlock(compressedBuffer.AsSpan(0, compressedLength), output, checked((int)header.BlockSize), out int bytesWritten) ||
                         bytesWritten != expectedBytes)
                     {
                         return Decorate(

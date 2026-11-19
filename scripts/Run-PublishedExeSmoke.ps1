@@ -147,7 +147,7 @@ function Test-HelpSmoke {
         "csokit repair <input.iso|input.cso>",
         "csokit analyze <input.iso>",
         "csokit detect <input>",
-        "csokit decompress <input.cso|input.zso>",
+        "csokit decompress <input.cso|input.zso|input.dax>",
         "csokit compress <input.iso>",
         "--profile <game-safe|compat|fast|smallest|archive-smallest>",
         "[--fast]",

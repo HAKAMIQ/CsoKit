@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <None Include="Fixtures\Zso\*.zso" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Fixtures\Cso\*.cso;Fixtures\Cso\*.dax" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
