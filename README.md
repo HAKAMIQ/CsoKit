@@ -125,12 +125,6 @@ Use `game-safe` unless you have a specific reason to choose another profile.
 - Compression writes CSO1 only.
 - `CsoKit.Native.dll` must stay beside `csokit.exe`.
 
-## Desktop app (preview)
-
-The source tree also contains `CsoKit.App`, a Windows desktop interface with Arabic and English text. It runs the same operations as the CLI and writes a plain-text report beside the output after each operation.
-
-The desktop app is not included in the release ZIP. It is built from source by `scripts\Run-OfficialReleaseGate.ps1`, which produces `artifacts\release\csokit-<version>-app-win-x64.zip`.
-
 ## Security
 
 Every release is built by GitHub Actions from a signed tag, with a GitHub build provenance attestation for the ZIP and for `SHA256SUMS.txt`. To check a download:
@@ -146,6 +140,10 @@ See `SECURITY.md` for vulnerability reporting.
 CsoKit does not include games, BIOS files, firmware, keys, or disc images.
 
 Use CsoKit only with files you own or are legally authorized to process.
+
+## Developers
+
+Building, tests, release gates, and the desktop app preview are covered in `CONTRIBUTING.md` and `docs/`.
 
 ## License
 

@@ -147,7 +147,3 @@ $RECYCLE.BIN/
 *.decompress-report.txt
 *.source-review.txt
 *.release-check.txt
-graphify-out/
-
-AGENTS.md
-.codex/
