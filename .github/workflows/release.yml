@@ -24,12 +24,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
         with:
           dotnet-version: "10.0.x"
 
@@ -80,17 +80,17 @@ jobs:
         run: .\scripts\Verify-Release.ps1 -Version $env:RELEASE_VERSION -Runtime win-x64
 
       - name: Attest release ZIP
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: artifacts/release/csokit-${{ env.RELEASE_VERSION }}-win-x64.zip
 
       - name: Attest SHA256 manifest
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: artifacts/publish/win-x64/SHA256SUMS.txt
 
       - name: Upload workflow artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: csokit-${{ env.RELEASE_VERSION }}-win-x64
           path: |
@@ -112,6 +112,21 @@ jobs:
           if (-not (Test-Path $shaPath)) {
             throw "SHA256 manifest was not found: $shaPath"
           }
+
+          $notesPath = "$env:RUNNER_TEMP\release-notes.md"
+          $zipName = Split-Path -Leaf $zipPath
+          $zipHash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          $hashSection = @(
+            "",
+            "## SHA-256",
+            "",
+            '```',
+            "$zipHash  $zipName",
+            '```',
+            "",
+            "Verify the build provenance with ``gh attestation verify $zipName --repo $env:GITHUB_REPOSITORY``."
+          ) -join "`n"
+          Add-Content -LiteralPath $notesPath -Value $hashSection -Encoding utf8
 
           $releaseArgs = @(
             "release",

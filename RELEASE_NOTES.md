@@ -11,6 +11,7 @@ CsoKit 0.6.4 adds ZSO decompression and reads ZSO images in the layouts written 
 - Bytes after the last ZSO block are rejected, matching the CSO rule from 0.6.3.
 - A CSO or ZSO header with an overflowing uncompressed size is reported as invalid instead of crashing `detect`, `decompress`, and `verify`.
 - The desktop app source has tests for its view model, reports, and localization, and lists ZSO in decompression text.
+- Release pages show only their own version's notes plus the ZIP's SHA-256. The repository adds `SECURITY.md`, `CONTRIBUTING.md`, a weekly CodeQL scan, and workflow actions pinned to exact commits.
 
 ## Supported workflows
 
@@ -49,7 +50,22 @@ Verify important output before deleting the original image:
 
 ## Verification
 
-GATE_RESULTS_PLACEHOLDER
+Final release gate run against the release commit on 2026-11-19 with a real 364 MB PSP ISO:
+
+- Debug build: PASS — 0 warnings, 0 errors.
+- Release build: PASS — 0 warnings, 0 errors.
+- Automated tests: 294/294 PASS (244 core, 50 desktop app).
+- Native integration: PASS — native version 0.6.4 ABI 2 with zlib, libdeflate, Zopfli, and LZ4 decode available.
+- Published executable smoke: PASS.
+- Release package verification: PASS.
+- SHA-256 manifest: 6 entries.
+- NuGet Audit: not run; the gate restores with auditing disabled.
+- Real ISO round trip: PASS — restored ISO SHA-256 matched the original for game-safe, compat, fast, and smallest, through both the build output and the published executable.
+
+ZSO decompression, checked separately against the same ISO:
+
+- ZSO files written by ziso.py, from the 364 MB ISO and from a 2.2 GB image (index alignment 1, `X` padding): restored ISO SHA-256 matched.
+- ZSO files in the maxcso layout (2048 and 16384-byte blocks), produced with the reference LZ4 library: restored ISO SHA-256 matched. maxcso itself was not run.
 
 ## Important notes
 
@@ -57,6 +73,8 @@ GATE_RESULTS_PLACEHOLDER
 - Repair cannot recreate unreadable or missing source data.
 - Structural verification does not guarantee emulator or physical-device compatibility.
 - Output base names must contain 2 to 10 Unicode characters; the extension is not counted.
+
+CsoKit does not include games, BIOS files, firmware, keys, or disc images.
 
 # CsoKit 0.6.3
 
