@@ -9,13 +9,23 @@ param(
     [string]$NotesPath = ""
 )
 
-# Writes only the "# CsoKit <Version>" section of RELEASE_NOTES.md, so a GitHub
-# release page shows its own notes instead of the whole history.
+# Writes the body of the "# CsoKit <Version>" section of RELEASE_NOTES.md (without
+# the heading, which the release title already shows), so a GitHub release page
+# carries only its own user-facing notes. Refuses to run until the release gate
+# results are recorded in docs/verification/<Version>.md.
 
 $ErrorActionPreference = "Stop"
 
+$repoRoot = Join-Path $PSScriptRoot ".."
+
 if ([string]::IsNullOrWhiteSpace($NotesPath)) {
-    $NotesPath = Join-Path (Join-Path $PSScriptRoot "..") "RELEASE_NOTES.md"
+    $NotesPath = Join-Path $repoRoot "RELEASE_NOTES.md"
+}
+
+$verificationPath = Join-Path (Join-Path (Join-Path $repoRoot "docs") "verification") "$Version.md"
+
+if (-not (Test-Path -LiteralPath $verificationPath -PathType Leaf)) {
+    throw "Release gate results for $Version are not recorded in docs/verification/$Version.md."
 }
 
 if (-not (Test-Path -LiteralPath $NotesPath -PathType Leaf)) {
@@ -30,11 +40,7 @@ if (-not $match.Success) {
     throw "RELEASE_NOTES.md has no '# CsoKit $Version' section."
 }
 
-$section = $match.Value.TrimEnd() + [Environment]::NewLine
-
-if ($section -match "GATE_RESULTS_PLACEHOLDER|Final release gate: pending") {
-    throw "The $Version release notes still have no recorded release gate results."
-}
+$section = ($match.Value -replace "^# CsoKit [^\r\n]*\r?\n", "").Trim() + [Environment]::NewLine
 
 $directory = Split-Path -Parent $OutputPath
 if (-not [string]::IsNullOrWhiteSpace($directory)) {

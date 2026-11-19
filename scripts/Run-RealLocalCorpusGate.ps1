@@ -64,9 +64,9 @@ $artifactRoot = Join-Path ([IO.Path]::GetTempPath()) ("CsoKit_RealCorpus_" + [Gu
 New-Item -ItemType Directory -Path $artifactRoot | Out-Null
 
 $extensions = @('.iso', '.cso', '.zso', '.dax', '.cso2')
-$files = Get-ChildItem -LiteralPath $resolvedRoot -File -Recurse |
+$files = @(Get-ChildItem -LiteralPath $resolvedRoot -File -Recurse |
     Where-Object { $extensions -contains $_.Extension.ToLowerInvariant() } |
-    Sort-Object FullName
+    Sort-Object FullName)
 
 $results = New-Object System.Collections.Generic.List[object]
 $success = $true
@@ -76,7 +76,7 @@ function Invoke-CsoTool {
     $prefix = if ($tool.Count -gt 1) { @($tool[1..($tool.Count - 1)]) } else { @() }
     & $tool[0] @($prefix + $Arguments)
     if ($LASTEXITCODE -ne 0) {
-        throw "csokit failed with exit code $LASTEXITCODE: $($Arguments -join ' ')"
+        throw "csokit failed with exit code ${LASTEXITCODE}: $($Arguments -join ' ')"
     }
 }
 
@@ -157,6 +157,10 @@ else {
         Write-Host "Real local corpus gate PASS. Files checked: $($files.Count)"
         if ($KeepArtifacts) { Write-Host "Artifacts: $artifactRoot" }
     }
+}
+
+if (-not $success) {
+    exit 1
 }
 
 if ($success) { exit 0 } else { exit 1 }

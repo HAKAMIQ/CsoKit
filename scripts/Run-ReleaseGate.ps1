@@ -102,7 +102,7 @@ function Test-ForbiddenTerms {
         }
     }
 
-    foreach ($relativePath in @("README.md", "CHANGELOG_FIX_NOTES.md")) {
+    foreach ($relativePath in @("README.md", "RELEASE_NOTES.md")) {
         $path = Join-Path $RepoRoot $relativePath
 
         if (Test-Path -LiteralPath $path) {

@@ -122,9 +122,7 @@ jobs:
             "",
             '```',
             "$zipHash  $zipName",
-            '```',
-            "",
-            "Verify the build provenance with ``gh attestation verify $zipName --repo $env:GITHUB_REPOSITORY``."
+            '```'
           ) -join "`n"
           Add-Content -LiteralPath $notesPath -Value $hashSection -Encoding utf8
 
